@@ -314,14 +314,14 @@
 
   .item-row{ border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:8px; background:var(--bg); }
   .item-row-fields{ display:flex; align-items:center; gap:6px; }
-  .item-code{ flex:2; min-width:0; padding:7px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-code{ flex:5; min-width:0; padding:7px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
   .item-qtybox{ display:flex; align-items:center; gap:3px; flex:none; }
   .item-qtybox .iq-btn{
-    width:24px; height:30px; border-radius:7px; border:1px solid var(--border); background:var(--surface-2);
+    width:20px; height:28px; border-radius:7px; border:1px solid var(--border); background:var(--surface-2);
     color:var(--ink); font-weight:700; font-size:.95rem; cursor:pointer; font-family:var(--font-body); flex:none;
   }
-  .item-qty{ width:38px; text-align:center; padding:7px 2px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
-  .item-amount{ flex:1; min-width:0; width:64px; padding:7px 8px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-qty{ width:26px; text-align:center; padding:7px 2px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-amount{ flex:2; min-width:0; width:64px; padding:7px 8px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
   .item-remove{
     flex:none; width:28px; height:28px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
     color:var(--ink-muted); font-size:1.1rem; line-height:1; cursor:pointer;
@@ -346,6 +346,7 @@
   }
   .phone-suggest button:last-child{ border-bottom:none; }
   .phone-suggest button:hover{ background:var(--surface-2); }
+  .phone-suggest button.ps-active{ background:var(--accent-soft); }
   .phone-suggest .ps-name{ font-weight:600; font-size:.85rem; }
   .phone-suggest .ps-meta{ font-size:.75rem; color:var(--ink-muted); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .phone-suggest .ps-phone{ font-family:var(--font-mono); }
@@ -610,6 +611,10 @@
           </select>
         </div>
         <div class="field">
+          <label for="f-floor">Όροφος</label>
+          <input id="f-floor" autocomplete="off" placeholder="π.χ. 2ος">
+        </div>
+        <div class="field span2">
           <label for="f-address">Διεύθυνση</label>
           <input id="f-address" autocomplete="off">
         </div>
@@ -617,7 +622,7 @@
           <label>Είδη παραγγελίας</label>
           <datalist id="codeList"></datalist>
           <div id="itemsList"></div>
-          <button type="button" class="btn btn-ghost add-item-btn" id="addItemBtn">+ Προσθήκη κωδικού</button>
+          <button type="button" class="btn btn-ghost add-item-btn" id="addItemBtn">+ Προσθήκη είδους</button>
           <div class="items-total-row"><span>Σύνολο</span><span id="itemsTotal">0,00 €</span></div>
         </div>
         <div class="field">
@@ -745,6 +750,10 @@
           <label for="fc-phone">Τηλέφωνο</label>
           <input id="fc-phone" type="tel" autocomplete="off">
         </div>
+        <div class="field">
+          <label for="fc-floor">Όροφος</label>
+          <input id="fc-floor" autocomplete="off" placeholder="π.χ. 2ος">
+        </div>
         <div class="field span2">
           <label for="fc-notes">Παρατηρήσεις</label>
           <textarea id="fc-notes"></textarea>
@@ -804,12 +813,12 @@
      projectId empty keeps the app on its previous storage (Claude Artifact db,
      or local offline mode) so nothing breaks until you fill this in. */
   var FIREBASE_CONFIG = {
-      apiKey: "AIzaSyClM770YTlVAQp1gh0BuqFOf7DE37wdWSs",
-  authDomain: "dianomi-82617.firebaseapp.com",
-  projectId: "dianomi-82617",
-  storageBucket: "dianomi-82617.firebasestorage.app",
-  messagingSenderId: "175370424759",
-  appId: "1:175370424759:web:9bdd8639cd8e1ac74a5832",
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
   };
 
   /* ---------------- constants ---------------- */
@@ -998,6 +1007,7 @@
     var patch = {};
     if(orderData.phone && !existing.phone) patch.phone = orderData.phone;
     if(orderData.address && !existing.address) patch.address = orderData.address;
+    if(orderData.floor && !existing.floor) patch.floor = orderData.floor;
     if(Object.keys(patch).length){
       patch.updatedAt = new Date().toISOString();
       updateCustomer(existing.id, patch);
@@ -1189,7 +1199,7 @@
 
     var subParts = [];
     if(o.phone) subParts.push(o.phone);
-    if(o.address) subParts.push(o.address);
+    if(o.address || o.floor) subParts.push([o.address, o.floor].filter(Boolean).join(' — '));
     if(o.scheduledDate) subParts.push('Για ' + fmtDateShort(o.scheduledDate));
     if(o.notes) subParts.push(o.notes);
     subParts.push(fmtRelative(o.createdAt));
@@ -1269,7 +1279,7 @@
     html += '<div class="r-row"><span class="k">Εκτύπωση</span><span>'+esc(stamp)+'</span></div>';
     html += '<hr>';
     html += '<div class="r-customer">'+esc(o.customer || '')+'</div>';
-    if(o.address) html += '<div class="r-line"><span class="k">Διεύθ.:</span> <span>'+esc(o.address)+'</span></div>';
+    if(o.address || o.floor) html += '<div class="r-line"><span class="k">Διεύθ.:</span> <span>'+esc([o.address, o.floor].filter(Boolean).join(' — '))+'</span></div>';
     if(o.phone) html += '<div class="r-line"><span class="k">Τηλ.:</span> <span>'+esc(o.phone)+'</span></div>';
     html += '<hr>';
     var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
@@ -1444,14 +1454,14 @@
     row.className = 'item-row';
     row.innerHTML =
       '<div class="item-row-fields">' +
-        '<input class="item-code" list="codeList" placeholder="Κωδικός" autocomplete="off">' +
+        '<input class="item-code" list="codeList" placeholder="Περιγραφή είδους" autocomplete="off">' +
         '<div class="item-qtybox">' +
-          '<button type="button" class="iq-btn iq-minus" aria-label="Μείωση">−</button>' +
+          '<button type="button" class="iq-btn iq-minus" tabindex="-1" aria-label="Μείωση">−</button>' +
           '<input class="item-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="0">' +
-          '<button type="button" class="iq-btn iq-plus" aria-label="Αύξηση">+</button>' +
+          '<button type="button" class="iq-btn iq-plus" tabindex="-1" aria-label="Αύξηση">+</button>' +
         '</div>' +
         '<input class="item-amount" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Ποσό €">' +
-        '<button type="button" class="item-remove" title="Αφαίρεση γραμμής">&times;</button>' +
+        '<button type="button" class="item-remove" tabindex="-1" title="Αφαίρεση γραμμής">&times;</button>' +
       '</div>' +
       '<div class="item-quick"></div>';
 
@@ -1470,6 +1480,7 @@
     HOT_CODES.forEach(function(code){
       var btn = document.createElement('button');
       btn.type = 'button';
+      btn.tabIndex = -1;
       btn.textContent = code;
       btn.addEventListener('click', function(){
         codeInput.value = (codeInput.value === code) ? '' : code;
@@ -1526,6 +1537,34 @@
 
   document.getElementById('addItemBtn').addEventListener('click', function(){
     addItemRow({});
+  });
+
+  // Enter/Tab move to the next field while filling in the order form,
+  // instead of Enter submitting the form. Buttons and the notes textarea
+  // are skipped (tabindex="-1" on the item-row buttons keeps native Tab
+  // in step; here we keep native Enter in step too).
+  function focusNextField(current){
+    var form = current.form || (current.closest ? current.closest('form') : null);
+    if(!form) return;
+    var focusables = Array.prototype.slice.call(form.querySelectorAll('input, select, textarea, button')).filter(function(el){
+      return !el.disabled && el.tabIndex !== -1 && el.offsetParent !== null;
+    });
+    var idx = focusables.indexOf(current);
+    if(idx === -1 || idx === focusables.length - 1) return;
+    var next = focusables[idx + 1];
+    next.focus();
+    if(typeof next.select === 'function' && (next.tagName === 'INPUT')){
+      try { next.select(); } catch(e){}
+    }
+  }
+
+  document.getElementById('orderForm').addEventListener('keydown', function(e){
+    if(e.key !== 'Enter') return;
+    var t = e.target;
+    if(t.tagName === 'TEXTAREA') return; // allow real newlines in Σημειώσεις
+    if(t.tagName === 'BUTTON') return; // let buttons act on Enter/Space normally
+    e.preventDefault();
+    focusNextField(t);
   });
 
   function renderDelivererFormSelect(){
@@ -1689,7 +1728,7 @@
     var qDigits = normPhone(customerSearch);
     var list = customers.filter(function(c){
       if(!q) return true;
-      var inText = [c.name,c.address,c.notes].some(function(v){ return String(v||'').toLowerCase().indexOf(q) !== -1; });
+      var inText = [c.name,c.address,c.floor,c.notes].some(function(v){ return String(v||'').toLowerCase().indexOf(q) !== -1; });
       var inPhone = qDigits.length >= 3 && normPhone(c.phone).indexOf(qDigits) !== -1;
       return inText || inPhone;
     }).sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'el'); });
@@ -1705,7 +1744,7 @@
       var html = '<span class="oi"><svg class="icon"><use href="#ico-user"/></svg></span>';
       html += '<div class="cbody">';
       html += '<div class="cname"></div>';
-      if(c.address) html += '<div class="cline caddr"><svg class="icon"><use href="#ico-pin"/></svg><span></span></div>';
+      if(c.address || c.floor) html += '<div class="cline caddr"><svg class="icon"><use href="#ico-pin"/></svg><span></span></div>';
       if(c.phone) html += '<div class="cline cphone"><svg class="icon"><use href="#ico-phone"/></svg><span></span></div>';
       if(c.notes) html += '<div class="cline cnotes"><span></span></div>';
       html += '</div>';
@@ -1714,7 +1753,7 @@
       }
       row.innerHTML = html;
       row.querySelector('.cname').textContent = c.name;
-      var a = row.querySelector('.caddr span'); if(a) a.textContent = c.address;
+      var a = row.querySelector('.caddr span'); if(a) a.textContent = [c.address, c.floor].filter(Boolean).join(' — ');
       var p = row.querySelector('.cphone span'); if(p) p.textContent = c.phone;
       var n = row.querySelector('.cnotes span'); if(n) n.textContent = c.notes;
       var eb = row.querySelector('.cedit'); if(eb) eb.addEventListener('click', function(){ openCustomerForm(c); });
@@ -1750,6 +1789,7 @@
       document.getElementById('f-customer').value = existing.customer || '';
       document.getElementById('f-area').value = existing.area || 'ΠΟΛΗ';
       document.getElementById('f-phone').value = existing.phone || '';
+      document.getElementById('f-floor').value = existing.floor || '';
       document.getElementById('f-address').value = existing.address || '';
       document.getElementById('f-payment').value = existing.payment || '';
       document.getElementById('f-deliverer').value = existing.deliverer || '';
@@ -1758,6 +1798,7 @@
       resetItemsList(existing.items && existing.items.length ? existing.items : (existing.code || existing.qty || existing.amount ? [{code: existing.code, qty: existing.qty, amount: existing.amount}] : null));
     } else {
       document.getElementById('f-area').value = 'ΠΟΛΗ';
+      document.getElementById('f-payment').value = 'Μετρητοίς';
       resetItemsList(null);
     }
     overlay.hidden = false;
@@ -1766,6 +1807,21 @@
   function closeOrderModal(){ document.getElementById('orderModalOverlay').hidden = true; }
 
   document.getElementById('newOrderFab').addEventListener('click', function(){ openOrderModal(null); });
+
+  // global shortcut: the backtick key (`, left of "1") opens a new order
+  // from anywhere, unless a modal is already open or the person is typing
+  // in an editable field.
+  document.addEventListener('keydown', function(e){
+    if(e.key !== '`' && e.key !== '~' && e.code !== 'Backquote') return;
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    var t = e.target;
+    var tag = t && t.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
+    var anyModalOpen = Array.prototype.some.call(document.querySelectorAll('.modal-overlay'), function(m){ return !m.hidden; });
+    if(anyModalOpen) return;
+    e.preventDefault();
+    openOrderModal(null);
+  });
   document.getElementById('orderModalClose').addEventListener('click', closeOrderModal);
   document.getElementById('orderCancelBtn').addEventListener('click', closeOrderModal);
 
@@ -1819,6 +1875,7 @@
       customer: document.getElementById('f-customer').value.trim(),
       area: document.getElementById('f-area').value,
       phone: document.getElementById('f-phone').value.trim(),
+      floor: document.getElementById('f-floor').value.trim(),
       address: document.getElementById('f-address').value.trim(),
       items: items,
       code: items.length === 1 ? items[0].code : items.map(function(it){ return it.code; }).filter(Boolean).join(', '),
@@ -1860,6 +1917,7 @@
       createCustomer({
         name: pendingOrder.data.customer,
         address: pendingOrder.data.address || '',
+        floor: pendingOrder.data.floor || '',
         phone: pendingOrder.data.phone || '',
         notes: '',
         createdAt: new Date().toISOString()
@@ -1883,9 +1941,11 @@
   function applyCustomerMatch(match){
     var nameEl = document.getElementById('f-customer');
     var addrEl = document.getElementById('f-address');
+    var floorEl = document.getElementById('f-floor');
     var hint = document.getElementById('custHint');
     nameEl.value = match.name || '';
     if(match.address) addrEl.value = match.address;
+    if(match.floor) floorEl.value = match.floor;
     var bits = [];
     if(match.address) bits.push(match.address);
     if(match.notes) bits.push('«' + match.notes + '»');
@@ -1893,14 +1953,26 @@
     hint.hidden = false;
   }
 
+  var phoneSuggestIndex = -1;
+
+  function updatePhoneSuggestHighlight(){
+    var box = document.getElementById('phoneSuggest');
+    Array.from(box.children).forEach(function(btn, i){
+      btn.classList.toggle('ps-active', i === phoneSuggestIndex);
+    });
+  }
+
   function renderPhoneSuggestions(matches, phoneEl){
     var box = document.getElementById('phoneSuggest');
     box.innerHTML = '';
+    phoneSuggestIndex = -1;
     matches.slice(0, 6).forEach(function(c){
       var btn = document.createElement('button');
       btn.type = 'button';
+      btn.tabIndex = -1;
       var metaBits = [];
       if(c.address) metaBits.push(c.address);
+      if(c.floor) metaBits.push(c.floor);
       btn.innerHTML = '<div class="ps-name"></div><div class="ps-meta"><span class="ps-phone"></span>' + (metaBits.length ? ' · <span class="ps-addr"></span>' : '') + '</div>';
       btn.querySelector('.ps-name').textContent = c.name;
       btn.querySelector('.ps-phone').textContent = c.phone || '';
@@ -1909,6 +1981,7 @@
         phoneEl.value = c.phone || phoneEl.value;
         applyCustomerMatch(c);
         box.hidden = true;
+        phoneSuggestIndex = -1;
       });
       box.appendChild(btn);
     });
@@ -1923,12 +1996,14 @@
     if(qDigits.length < 4){
       hint.hidden = true;
       suggestBox.hidden = true;
+      phoneSuggestIndex = -1;
       return;
     }
 
     var exact = findCustomerByPhone(this.value);
     if(exact){
       suggestBox.hidden = true;
+      phoneSuggestIndex = -1;
       applyCustomerMatch(exact);
       return;
     }
@@ -1940,6 +2015,31 @@
     } else {
       suggestBox.hidden = true;
       hint.hidden = true;
+      phoneSuggestIndex = -1;
+    }
+  });
+
+  // while the suggestion dropdown is open, arrows move the highlight and
+  // Enter picks the highlighted match; otherwise Enter falls through to
+  // the generic next-field behaviour below.
+  document.getElementById('f-phone').addEventListener('keydown', function(e){
+    var box = document.getElementById('phoneSuggest');
+    var items = box.hidden ? [] : Array.prototype.slice.call(box.children);
+    if(!items.length) return;
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(e.key === 'ArrowDown'){ phoneSuggestIndex = (phoneSuggestIndex + 1) % items.length; }
+      else { phoneSuggestIndex = (phoneSuggestIndex - 1 + items.length) % items.length; }
+      updatePhoneSuggestHighlight();
+      items[phoneSuggestIndex].scrollIntoView({block: 'nearest'});
+      return;
+    }
+    if(e.key === 'Enter' && phoneSuggestIndex >= 0 && phoneSuggestIndex < items.length){
+      e.preventDefault();
+      e.stopPropagation();
+      var chosen = items[phoneSuggestIndex];
+      chosen.click();
+      focusNextField(this);
     }
   });
 
@@ -1952,8 +2052,10 @@
     var match = findCustomerByName(this.value);
     if(!match){ hint.hidden = true; return; }
     var addrEl = document.getElementById('f-address');
+    var floorEl = document.getElementById('f-floor');
     if(match.phone) phoneEl.value = match.phone;
     if(match.address && !addrEl.value) addrEl.value = match.address;
+    if(match.floor && !floorEl.value) floorEl.value = match.floor;
     var bits = [];
     if(match.address) bits.push(match.address);
     if(match.notes) bits.push('«' + match.notes + '»');
@@ -1975,6 +2077,7 @@
       document.getElementById('fc-name').value = existing.name || '';
       document.getElementById('fc-address').value = existing.address || '';
       document.getElementById('fc-phone').value = existing.phone || '';
+      document.getElementById('fc-floor').value = existing.floor || '';
       document.getElementById('fc-notes').value = existing.notes || '';
     }
     document.getElementById('customerFormOverlay').hidden = false;
@@ -2002,6 +2105,7 @@
       name: document.getElementById('fc-name').value.trim(),
       address: document.getElementById('fc-address').value.trim(),
       phone: document.getElementById('fc-phone').value.trim(),
+      floor: document.getElementById('fc-floor').value.trim(),
       notes: document.getElementById('fc-notes').value.trim(),
       updatedAt: new Date().toISOString()
     };
