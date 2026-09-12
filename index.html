@@ -1,0 +1,2182 @@
+<!doctype html>
+<html lang="el">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<title>ZGAS Διανομή</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=PT+Sans+Narrow:wght@400;700&display=swap">
+<style>
+  [hidden]{ display:none !important; }
+  :root{
+    --bg:#F4F5F2;
+    --surface:#FFFFFF;
+    --surface-2:#EBEEE9;
+    --border:#DCE0DA;
+    --ink:#1A2229;
+    --ink-muted:#5B6670;
+    --ink-faint:#8A949B;
+    --accent:#F0C300;
+    --accent-ink:#1C1A12;
+    --accent-soft:#FFF3BF;
+    --accent-strong:#8A6600;
+    --steel:#202124;
+    --steel-ink:#FFFFFF;
+    --shadow-sm:0 1px 2px rgba(20,24,27,.07);
+    --shadow-md:0 6px 20px rgba(20,24,27,.12);
+
+    --st-pending-bg:#FBE7D2; --st-pending-fg:#9A5710;
+    --st-transit-bg:#DFEBF4; --st-transit-fg:#1D5A85;
+    --st-done-bg:#DFEFE3;    --st-done-fg:#1E6B41;
+    --st-cancel-bg:#F5E1DE;  --st-cancel-fg:#8C3627;
+
+    --pay-cash-bg:#DFF3E3;    --pay-cash-fg:#1D7A43;
+    --pay-card-bg:#E2E6FB;    --pay-card-fg:#3B4BB5;
+    --pay-credit-bg:#FCE4E4;  --pay-credit-fg:#B0313B;
+    --pay-prepaid-bg:#EDE1FA; --pay-prepaid-fg:#6B3FA0;
+
+    --font-display:'PT Sans Narrow', Arial Narrow, sans-serif;
+    --font-body:'IBM Plex Sans', system-ui, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14181B;
+      --surface:#1C2226;
+      --surface-2:#222A2E;
+      --border:#333D42;
+      --ink:#E9ECEC;
+      --ink-muted:#9AA5AA;
+      --ink-faint:#6E787D;
+      --accent:#F5D23D;
+      --accent-ink:#1C1A12;
+      --accent-soft:#3D330C;
+      --accent-strong:#F5D23D;
+      --steel:#2A2B2F;
+      --steel-ink:#F2F5F7;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+      --shadow-md:0 10px 26px rgba(0,0,0,.45);
+
+      --st-pending-bg:#3A2A12; --st-pending-fg:#F0A855;
+      --st-transit-bg:#16293A; --st-transit-fg:#7FBBE6;
+      --st-done-bg:#173323;    --st-done-fg:#72D097;
+      --st-cancel-bg:#35201C;  --st-cancel-fg:#E58F7F;
+
+      --pay-cash-bg:#123324;    --pay-cash-fg:#5FCB8B;
+      --pay-card-bg:#1E2350;    --pay-card-fg:#98A9F2;
+      --pay-credit-bg:#3A1518;  --pay-credit-fg:#F08A90;
+      --pay-prepaid-bg:#2C1F42; --pay-prepaid-fg:#C79EF0;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14181B;
+    --surface:#1C2226;
+    --surface-2:#222A2E;
+    --border:#333D42;
+    --ink:#E9ECEC;
+    --ink-muted:#9AA5AA;
+    --ink-faint:#6E787D;
+    --accent:#F5D23D;
+    --accent-ink:#1C1A12;
+    --accent-soft:#3D330C;
+    --accent-strong:#F5D23D;
+    --steel:#2A2B2F;
+    --steel-ink:#F2F5F7;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+    --shadow-md:0 10px 26px rgba(0,0,0,.45);
+
+    --st-pending-bg:#3A2A12; --st-pending-fg:#F0A855;
+    --st-transit-bg:#16293A; --st-transit-fg:#7FBBE6;
+    --st-done-bg:#173323;    --st-done-fg:#72D097;
+    --st-cancel-bg:#35201C;  --st-cancel-fg:#E58F7F;
+
+    --pay-cash-bg:#123324;    --pay-cash-fg:#5FCB8B;
+    --pay-card-bg:#1E2350;    --pay-card-fg:#98A9F2;
+    --pay-credit-bg:#3A1518;  --pay-credit-fg:#F08A90;
+    --pay-prepaid-bg:#2C1F42; --pay-prepaid-fg:#C79EF0;
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{ animation-duration:.001ms !important; transition-duration:.001ms !important; }
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font-body); font-size:.9375rem; line-height:1.45;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{ font-family:var(--font-display); font-weight:700; margin:0; letter-spacing:.01em; }
+  button{ font-family:inherit; }
+  input,select,textarea{ font-family:inherit; font-size:.9375rem; color:var(--ink); }
+  svg.icon{ width:1em; height:1em; stroke:currentColor; stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; display:inline-block; vertical-align:-.15em; }
+
+  a{ color:inherit; }
+
+  /* ---------- layout shell ---------- */
+  .wrap{ max-width:1080px; margin:0 auto; padding:0 16px 96px; }
+
+  header.topbar{
+    position:sticky; top:0; z-index:20;
+    background:var(--surface); border-bottom:1px solid var(--border);
+  }
+  .topbar-inner{
+    max-width:1080px; margin:0 auto; padding:12px 16px;
+    display:flex; align-items:center; gap:12px;
+  }
+  .brand{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
+  .brand-mark{ width:32px; height:32px; flex:none; border-radius:8px; object-fit:cover; display:block; box-shadow:0 0 0 1px rgba(0,0,0,.08); }
+  .brand-text{ min-width:0; }
+  .brand-text h1{ font-size:clamp(.95rem,4.2vw,1.3rem); line-height:1.1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .brand-text p{ margin:2px 0 0; font-size:.7rem; color:var(--ink-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .role-badge{
+    display:flex; align-items:center; gap:6px; padding:6px 9px;
+    background:var(--surface-2); border:1px solid var(--border); border-radius:999px;
+    font-size:.78rem; white-space:nowrap; flex:none; max-width:38vw; overflow:hidden;
+  }
+  .role-badge b{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:22vw; display:inline-block; vertical-align:bottom; }
+  .role-badge svg{ color:var(--ink-muted); }
+  .role-badge b{ font-weight:600; }
+  .icon-btn{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:34px; height:34px; border-radius:10px; border:1px solid var(--border);
+    background:var(--surface); color:var(--ink-muted); cursor:pointer; flex:none;
+  }
+  .icon-btn:hover{ color:var(--ink); background:var(--surface-2); }
+
+  /* ---------- stat strip (compact, single line) ---------- */
+  .stats{ display:flex; flex-wrap:wrap; align-items:baseline; gap:5px 20px; margin:10px 0 8px; }
+  .stat-tile{ display:flex; align-items:baseline; gap:6px; }
+  .stat-tile .n{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-size:1.05rem; font-weight:700; line-height:1; }
+  .stat-tile .l{ font-size:.74rem; color:var(--ink-muted); }
+  .stat-tile.pending .n{ color:var(--st-pending-fg); }
+  .stat-tile.transit .n{ color:var(--st-transit-fg); }
+  .stat-tile.done .n{ color:var(--st-done-fg); }
+
+  /* ---------- controls: tabs (left) + filters (right), one compact row ---------- */
+  .controls-row{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px; }
+  .tabs{ display:flex; gap:4px; background:var(--surface-2); border-radius:10px; padding:3px; flex:none; }
+  .tab{
+    padding:6px 11px; border-radius:8px; border:none; background:transparent;
+    color:var(--ink-muted); font-weight:600; font-size:.78rem; cursor:pointer; font-family:var(--font-display); letter-spacing:.02em;
+    white-space:nowrap;
+  }
+  .tab[aria-selected="true"]{ background:var(--surface); color:var(--ink); box-shadow:var(--shadow-sm); }
+
+  .filter-row{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; flex:1 1 260px; justify-content:flex-end; min-width:0; }
+  @media (max-width:680px){
+    .controls-row{ flex-direction:column; align-items:stretch; }
+    .tabs{ width:100%; }
+    .tabs .tab{ flex:1; text-align:center; padding-left:6px; padding-right:6px; }
+    .filter-row{ flex:0 1 auto; justify-content:flex-start; }
+  }
+  .chip-group{ display:flex; flex-wrap:wrap; gap:5px; }
+  .chip{
+    display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:999px;
+    border:1px solid var(--border); background:var(--surface); color:var(--ink-muted);
+    font-size:.74rem; cursor:pointer; font-weight:500; white-space:nowrap;
+  }
+  .chip[aria-pressed="true"]{ background:var(--steel); border-color:var(--steel); color:var(--steel-ink); }
+  .search-box{ flex:1 1 150px; max-width:220px; min-width:120px; position:relative; }
+  .search-box input{
+    width:100%; padding:5px 10px 5px 28px; border-radius:999px; border:1px solid var(--border);
+    background:var(--surface); color:var(--ink); font-size:.8rem;
+  }
+  .search-box svg{ position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--ink-faint); width:.85em; height:.85em; }
+
+  /* ---------- order list & rows ---------- */
+  .order-grid{ display:flex; flex-direction:column; }
+  .order-row{
+    background:var(--surface); border:1px solid var(--border); border-left-width:3px;
+    border-radius:8px; padding:7px 10px; margin-bottom:5px; display:flex; flex-direction:column; gap:1px;
+  }
+  .order-row:hover{ border-color:var(--ink-faint); }
+
+  /* one compact line: identity + items + payment + status/deliverer + actions */
+  .row-main{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .row-main .customer{
+    font-weight:700; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:32vw;
+  }
+  .row-main .area-mini{ display:flex; align-items:center; gap:3px; font-size:.68rem; color:var(--ink-muted); flex:none; }
+  .row-main .area-mini svg{ width:.85em; height:.85em; }
+  .row-main .items-summary{
+    font-family:var(--font-mono); font-size:.74rem; color:var(--ink-muted); font-variant-numeric:tabular-nums; white-space:nowrap;
+  }
+  .row-spacer{ flex:1 1 6px; min-width:6px; }
+
+  /* second, smaller line: everything else, one truncated row */
+  .row-sub{
+    font-size:.7rem; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+
+  .card-actions-mini{ display:flex; gap:2px; flex:none; }
+  .card-actions-mini .icon-btn{ width:23px; height:23px; border-radius:6px; }
+
+  .pill{ display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; font-size:.66rem; font-weight:600; white-space:nowrap; flex:none; }
+  .pill-area{ background:var(--surface-2); color:var(--ink-muted); }
+  .pill-pay-cash{ background:var(--pay-cash-bg); color:var(--pay-cash-fg); }
+  .pill-pay-card{ background:var(--pay-card-bg); color:var(--pay-card-fg); }
+  .pill-pay-credit{ background:var(--pay-credit-bg); color:var(--pay-credit-fg); }
+  .pill-pay-prepaid{ background:var(--pay-prepaid-bg); color:var(--pay-prepaid-fg); }
+
+  select.pill-select{
+    -webkit-appearance:none; appearance:none; border:none; border-radius:999px; padding:3px 20px 3px 9px;
+    font-size:.68rem; font-weight:600; font-family:var(--font-body); cursor:pointer; flex:none;
+    background-repeat:no-repeat; background-position:right 7px center; background-size:8px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23000' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  select.pill-select.st-pending{ background-color:var(--st-pending-bg); color:var(--st-pending-fg); }
+  select.pill-select.st-transit{ background-color:var(--st-transit-bg); color:var(--st-transit-fg); }
+  select.pill-select.st-done{ background-color:var(--st-done-bg); color:var(--st-done-fg); }
+  select.pill-select.st-cancel{ background-color:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+  select.deliverer-select{
+    background-color:var(--surface-2); color:var(--ink); border:1px solid var(--border);
+    border-radius:999px; padding:3px 20px 3px 9px; font-size:.68rem; font-weight:600; cursor:pointer; flex:none;
+    -webkit-appearance:none; appearance:none;
+    background-repeat:no-repeat; background-position:right 7px center; background-size:8px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+
+  .claim-btn{
+    padding:3px 10px; border-radius:999px; border:1px dashed var(--border); background:transparent;
+    color:var(--ink-muted); font-size:.68rem; font-weight:600; cursor:pointer; flex:none;
+  }
+  .claim-btn:hover{ border-color:var(--accent); color:var(--accent-strong); }
+  .advance-btn{
+    padding:4px 11px; border-radius:999px; border:none; background:var(--accent); color:var(--accent-ink);
+    font-size:.7rem; font-weight:700; cursor:pointer; flex:none;
+  }
+  .advance-btn:hover{ filter:brightness(1.05); }
+  .deliverer-chip{ display:inline-flex; align-items:center; gap:4px; font-size:.72rem; color:var(--ink-muted); flex:none; white-space:nowrap; }
+  .deliverer-chip .dot{ width:7px; height:7px; border-radius:50%; flex:none; }
+
+  /* ---------- empty state ---------- */
+  .empty-state{
+    text-align:center; padding:56px 20px; color:var(--ink-muted);
+    border:1.5px dashed var(--border); border-radius:16px; grid-column:1/-1;
+  }
+  .empty-state svg{ width:40px; height:40px; margin-bottom:10px; color:var(--ink-faint); }
+  .empty-state h3{ font-family:var(--font-body); font-size:1rem; color:var(--ink); margin-bottom:4px; }
+  .empty-state p{ font-size:.82rem; max-width:320px; margin:0 auto; }
+
+  /* ---------- fab ---------- */
+  .fab{
+    position:fixed; right:20px; bottom:20px; z-index:30;
+    display:flex; align-items:center; gap:8px; padding:14px 20px; border-radius:999px;
+    background:var(--accent); color:var(--accent-ink); border:none; font-weight:700; font-size:.9rem;
+    box-shadow:var(--shadow-md); cursor:pointer;
+  }
+  .fab svg{ width:18px; height:18px; }
+  .fab:hover{ filter:brightness(1.05); }
+
+  /* ---------- modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(15,18,20,.55); z-index:50;
+    display:flex; align-items:flex-end; justify-content:center; padding:0;
+  }
+  @media (min-width:640px){ .modal-overlay{ align-items:center; padding:20px; } }
+  /* confirmations can be opened from on top of another modal (e.g. deleting a
+     customer from within the customers list) — always paint above the rest */
+  #confirmDialogOverlay{ z-index:70; }
+  .modal{
+    background:var(--surface); width:100%; max-width:560px; max-height:92vh; overflow-y:auto;
+    border-radius:20px 20px 0 0; padding:20px; box-shadow:var(--shadow-md);
+  }
+  @media (min-width:640px){ .modal{ border-radius:18px; } }
+  .modal-head{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .modal-head h2{ font-size:1.15rem; flex:1; }
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .form-grid .span2{ grid-column:1/-1; }
+  .field label{ display:block; font-size:.75rem; font-weight:600; color:var(--ink-muted); margin-bottom:4px; }
+  .field input,.field select,.field textarea{
+    width:100%; padding:9px 11px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--ink);
+  }
+  .field textarea{ resize:vertical; min-height:56px; }
+  .field-hint{ margin:6px 0 0; font-size:.75rem; color:var(--accent-strong); background:var(--accent-soft); padding:6px 10px; border-radius:8px; }
+  .quick-codes{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
+  .quick-codes button{
+    padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--ink-muted); font-size:.75rem; font-weight:600; font-family:var(--font-mono); cursor:pointer;
+  }
+  .quick-codes button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .qty-stepper{ display:flex; gap:6px; margin-top:6px; }
+  .qty-btn{
+    flex:1; padding:7px 0; border-radius:9px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--ink); font-size:1.05rem; font-weight:700; line-height:1; cursor:pointer; font-family:var(--font-body);
+  }
+  .qty-btn:hover{ background:var(--accent-soft); border-color:var(--accent); color:var(--accent-strong); }
+  .qty-btn:active{ transform:scale(.96); }
+
+  .item-row{ border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:8px; background:var(--bg); }
+  .item-row-fields{ display:flex; align-items:center; gap:6px; }
+  .item-code{ flex:2; min-width:0; padding:7px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-qtybox{ display:flex; align-items:center; gap:3px; flex:none; }
+  .item-qtybox .iq-btn{
+    width:24px; height:30px; border-radius:7px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--ink); font-weight:700; font-size:.95rem; cursor:pointer; font-family:var(--font-body); flex:none;
+  }
+  .item-qty{ width:38px; text-align:center; padding:7px 2px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-amount{ flex:1; min-width:0; width:64px; padding:7px 8px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-remove{
+    flex:none; width:28px; height:28px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+    color:var(--ink-muted); font-size:1.1rem; line-height:1; cursor:pointer;
+  }
+  .item-remove:hover{ color:var(--st-cancel-fg); border-color:var(--st-cancel-fg); }
+  .item-quick{ display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
+  .item-quick button{
+    padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--ink-muted); font-size:.72rem; font-weight:600; font-family:var(--font-mono); cursor:pointer;
+  }
+  .item-quick button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .add-item-btn{ width:100%; border-style:dashed; }
+  .items-total-row{
+    display:flex; justify-content:space-between; align-items:baseline; margin-top:8px; padding-top:8px;
+    border-top:1px solid var(--border); font-weight:700; font-size:1rem;
+  }
+  .items-total-row span:last-child{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .phone-suggest{ margin-top:6px; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); }
+  .phone-suggest button{
+    display:block; width:100%; text-align:left; padding:8px 11px; border:none; background:transparent; cursor:pointer;
+    border-bottom:1px solid var(--border); font-family:inherit; color:var(--ink);
+  }
+  .phone-suggest button:last-child{ border-bottom:none; }
+  .phone-suggest button:hover{ background:var(--surface-2); }
+  .phone-suggest .ps-name{ font-weight:600; font-size:.85rem; }
+  .phone-suggest .ps-meta{ font-size:.75rem; color:var(--ink-muted); margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .phone-suggest .ps-phone{ font-family:var(--font-mono); }
+  .field input:focus,.field select:focus,.field textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .modal-actions{ display:flex; gap:10px; margin-top:18px; }
+  .btn{ padding:10px 18px; border-radius:11px; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-weight:600; font-size:.875rem; cursor:pointer; }
+  .btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); flex:1; }
+  .btn-ghost{ background:transparent; }
+  .btn-danger{ color:var(--st-cancel-fg); }
+  .btn-danger.btn-primary{ background:#C13B3B; border-color:#C13B3B; color:#fff; }
+  .btn-danger.btn-primary:hover{ background:#A83030; border-color:#A83030; }
+
+  /* ---------- role overlay ---------- */
+  .role-overlay{ position:fixed; inset:0; background:var(--bg); z-index:60; overflow-y:auto; }
+  .role-wrap{ max-width:420px; margin:0 auto; padding:56px 20px; }
+  .role-wrap .brand-mark{ width:64px; height:64px; margin:0 auto 14px; border-radius:14px; }
+  .role-wrap h1{ text-align:center; font-size:1.6rem; }
+  .role-wrap>p.lead{ text-align:center; color:var(--ink-muted); font-size:.85rem; margin:6px 0 28px; }
+  .role-section{ margin-bottom:22px; }
+  .role-section h3{ font-family:var(--font-body); font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin-bottom:8px; }
+  .role-option{
+    width:100%; display:flex; align-items:center; gap:12px; padding:13px 14px; margin-bottom:8px;
+    background:var(--surface); border:1px solid var(--border); border-radius:13px; cursor:pointer; text-align:left;
+  }
+  .role-option:hover{ border-color:var(--accent); }
+  .role-option .oi{ width:38px; height:38px; border-radius:10px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-muted); flex:none; }
+  .role-option .ot{ font-weight:600; }
+  .role-option .os{ font-size:.75rem; color:var(--ink-muted); }
+  .role-option.admin .oi{ background:var(--accent-soft); color:var(--accent-strong); }
+
+  /* ---------- settings panel (roster) ---------- */
+  .roster-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .roster-row:last-child{ border-bottom:none; }
+  .roster-row .oi{ width:30px; height:30px; border-radius:8px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-muted); flex:none; }
+  .roster-row .name{ flex:1; min-width:80px; font-weight:600; font-size:.875rem; }
+  .roster-row .rtype{ font-size:.72rem; color:var(--ink-faint); }
+  .roster-color{
+    -webkit-appearance:none; appearance:none; width:22px; height:22px; border-radius:50%; border:2px solid var(--surface);
+    box-shadow:0 0 0 1px var(--border); padding:0; background:none; cursor:pointer; flex:none;
+  }
+  .roster-color::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
+  .roster-color::-webkit-color-swatch{ border:none; border-radius:50%; }
+  .roster-color::-moz-color-swatch{ border:none; border-radius:50%; }
+  .switch{ width:36px; height:20px; border-radius:999px; background:var(--border); position:relative; border:none; cursor:pointer; flex:none; }
+  .switch[aria-checked="true"]{ background:var(--accent); }
+  .switch::after{ content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; }
+  .switch[aria-checked="true"]::after{ transform:translateX(16px); }
+  .add-roster{ display:flex; gap:8px; margin-top:12px; }
+  .add-roster input{ flex:1; }
+  .add-roster select{ width:120px; }
+
+  .customer-row{ display:flex; align-items:flex-start; gap:10px; padding:11px 0; border-bottom:1px solid var(--border); }
+  .customer-row:last-child{ border-bottom:none; }
+  .customer-row .oi{ width:32px; height:32px; border-radius:8px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-muted); flex:none; margin-top:1px; }
+  .customer-row .cbody{ flex:1; min-width:0; }
+  .customer-row .cname{ font-weight:600; font-size:.9rem; }
+  .customer-row .cline{ font-size:.78rem; color:var(--ink-muted); display:flex; align-items:center; gap:5px; margin-top:2px; overflow-wrap:anywhere; }
+  .customer-row .cline.cnotes{ font-style:italic; }
+  .customer-row .cline svg{ flex:none; }
+  .customer-row .cactions{ display:flex; gap:4px; flex:none; }
+  .customer-row .cactions .icon-btn{ width:28px; height:28px; border-radius:8px; }
+
+  .cash-row{
+    display:flex; align-items:center; gap:10px; width:100%; padding:11px 4px; border:none; background:transparent;
+    border-bottom:1px solid var(--border); cursor:pointer; text-align:left; font-family:inherit;
+  }
+  .cash-row:last-child{ border-bottom:none; }
+  .cash-row:hover{ background:var(--surface-2); }
+  .cash-row .dot{ width:10px; height:10px; border-radius:50%; flex:none; }
+  .cash-row .cn{ flex:1; font-weight:600; font-size:.875rem; }
+  .cash-row .ct{ font-family:var(--font-mono); font-weight:600; font-variant-numeric:tabular-nums; }
+  .cash-detail-row{ display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:.85rem; }
+  .cash-detail-row:last-child{ border-bottom:none; }
+  .cash-detail-row .ca{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  .cash-total-row{
+    display:flex; justify-content:space-between; align-items:baseline; margin-top:10px; padding-top:10px;
+    border-top:2px solid var(--ink); font-weight:700; font-size:1.05rem;
+  }
+  .cash-total-row span:last-child{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+
+  .banner{ background:var(--st-pending-bg); color:var(--st-pending-fg); font-size:.78rem; padding:8px 14px; text-align:center; }
+  .banner-danger{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+
+  .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  /* ---------------- thermal receipt (80mm) ---------------- */
+  #receiptArea{ display:none; }
+  .receipt{
+    width:72mm; margin:0 auto; font-family:var(--font-mono); color:#000; background:#fff;
+    font-size:12px; line-height:1.5;
+  }
+  .receipt .r-brand{ text-align:center; font-family:var(--font-body); font-weight:700; font-size:15px; letter-spacing:.03em; }
+  .receipt .r-sub{ text-align:center; font-size:10.5px; margin-top:2px; }
+  .receipt hr{ border:none; border-top:1px dashed #000; margin:8px 0; }
+  .receipt .r-row{ display:flex; justify-content:space-between; gap:10px; margin:2px 0; }
+  .receipt .r-row .k{ color:#000; }
+  .receipt .r-customer{ font-size:15px; font-weight:700; margin:2px 0; }
+  .receipt .r-line{ margin:3px 0; overflow-wrap:anywhere; }
+  .receipt .r-amount{ font-size:18px; font-weight:700; text-align:right; }
+  .receipt .r-status{ text-align:center; font-weight:700; border:1px solid #000; padding:3px; margin:8px 0; text-transform:uppercase; letter-spacing:.05em; }
+  .receipt .r-sign{ margin-top:22px; font-size:11px; }
+  .receipt .r-sign .line{ border-top:1px solid #000; margin-top:20px; padding-top:3px; }
+  .receipt .r-foot{ text-align:center; font-size:10px; margin-top:10px; color:#000; }
+
+  .receipt-toolbar{ display:none; }
+  body.receipt-mode{ background:#fff; }
+  body.receipt-mode > *:not(#receiptArea):not(#receiptToolbar){ display:none !important; }
+  body.receipt-mode #receiptArea{ display:block !important; padding:150px 16px 40px; }
+  body.receipt-mode .receipt-toolbar{
+    display:flex; position:fixed; top:0; left:0; right:0; z-index:9999;
+    align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;
+    background:#1A2229; color:#E9ECEC; padding:12px 16px;
+    font-family:var(--font-body); font-size:.85rem; font-weight:600;
+    box-shadow:0 2px 10px rgba(0,0,0,.28);
+  }
+  .receipt-toolbar kbd{
+    background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.25); border-radius:5px;
+    padding:1px 6px; font-family:var(--font-mono); font-size:.82em; color:#fff;
+  }
+  .receipt-toolbar .btn-ghost{ border-color:rgba(255,255,255,.35); color:#E9ECEC; }
+  .receipt-toolbar .rt-actions{ display:flex; gap:8px; flex:none; }
+  .receipt-toolbar .btn{ padding:8px 14px; font-size:.85rem; }
+  @media (max-width:480px){
+    .receipt-toolbar{ font-size:.76rem; padding:10px 12px; }
+    .receipt-toolbar .btn{ padding:7px 12px; font-size:.78rem; }
+  }
+
+  @media print{
+    body.receipt-mode > *:not(#receiptArea){ display:none !important; }
+    body.receipt-mode #receiptArea{ display:block !important; padding:0; }
+    #receiptToolbar{ display:none !important; }
+    @page{ size:80mm auto; margin:3mm; }
+  }
+</style>
+
+<svg class="visually-hidden" aria-hidden="true">
+  <defs>
+    <symbol id="ico-city" viewBox="0 0 24 24"><path d="M4 20V9l5-4v15M4 20h16M13 20V5l7 4v11M9 20v-3M9 13v-3"/></symbol>
+    <symbol id="ico-road" viewBox="0 0 24 24"><path d="M4 20L10 4h4l6 16M9 20l1.5-5h3L15 20"/></symbol>
+    <symbol id="ico-store" viewBox="0 0 24 24"><path d="M4 9l1-5h14l1 5M4 9v11h16V9M4 9h16M9 20v-6h6v6"/></symbol>
+    <symbol id="ico-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+    <symbol id="ico-phone" viewBox="0 0 24 24"><path d="M6 3h3l2 5-2.5 2.3a12.5 12.5 0 0 0 5.7 5.7L17 13.5l5 2V19a2 2 0 0 1-2 2C10.5 21 3 13.5 3 5a2 2 0 0 1 2-2z"/></symbol>
+    <symbol id="ico-truck" viewBox="0 0 24 24"><path d="M2 6h11v10H2zM13 10h4l3 3.2V16h-7z"/><circle cx="6.5" cy="18" r="1.7"/><circle cx="16.5" cy="18" r="1.7"/></symbol>
+    <symbol id="ico-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.2 3.6-6.5 8-6.5s8 2.3 8 6.5"/></symbol>
+    <symbol id="ico-plus" viewBox="0 0 24 24"><path d="M12 4v16M4 12h16"/></symbol>
+    <symbol id="ico-settings" viewBox="0 0 24 24"><path d="M4 6h6M14 6h6M4 12h10M18 12h2M4 18h15M21 18h0"/><circle cx="12" cy="6" r="2.1"/><circle cx="16" cy="12" r="2.1"/><circle cx="17" cy="18" r="2.1"/></symbol>
+    <symbol id="ico-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="ico-edit" viewBox="0 0 24 24"><path d="M4 20l1-4L15.5 5.5l3 3L8 19l-4 1z"/></symbol>
+    <symbol id="ico-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+    <symbol id="ico-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3-3m3 3l-3 3M20 16H7l3 3m-3-3l3-3"/></symbol>
+    <symbol id="ico-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4-9-4zM3 8v9l9 4 9-4V8M12 12v9"/></symbol>
+    <symbol id="ico-contacts" viewBox="0 0 24 24"><rect x="3" y="4" width="14" height="16" rx="2"/><circle cx="10" cy="10" r="2.3"/><path d="M6.3 17c.5-2.3 2-3 3.7-3s3.2.7 3.7 3M17 8h4M17 12h4M17 16h4"/></symbol>
+    <symbol id="ico-pin" viewBox="0 0 24 24"><path d="M12 21s7-7.6 7-12.2A7 7 0 0 0 5 8.8C5 13.4 12 21 12 21z"/><circle cx="12" cy="8.8" r="2.3"/></symbol>
+    <symbol id="ico-printer" viewBox="0 0 24 24"><path d="M6 9V4h12v5M4 9h16v7H4zM7 21h10v-6H7z"/><circle cx="17.3" cy="11.7" r=".9" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="ico-cash" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="19" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5c1.6 0 2.5-1 2.5-2.5M21.5 9.5c-1.6 0-2.5-1-2.5-2.5M2.5 14.5c1.6 0 2.5 1 2.5 2.5M21.5 14.5c-1.6 0-2.5 1-2.5 2.5"/></symbol>
+  </defs>
+</svg>
+
+<div id="offlineBanner" class="banner" hidden>Λειτουργία χωρίς σύνδεση αποθήκευσης — οι αλλαγές δεν αποθηκεύονται μόνιμα σε αυτήν την προβολή.</div>
+<div id="dbErrorBanner" class="banner banner-danger" hidden></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+<img class="brand-mark" src="data:image/jpeg;base64,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" alt="ZGAS">
+      <div class="brand-text">
+        <h1>ZGAS Ρέθυμνο</h1>
+        <p>Παραγγελίες &amp; Διανομή</p>
+      </div>
+    </div>
+    <button id="cashBtn" class="icon-btn" title="Ταμείο"><svg class="icon"><use href="#ico-cash"/></svg></button>
+    <button id="customersBtn" class="icon-btn" title="Πελάτες"><svg class="icon"><use href="#ico-contacts"/></svg></button>
+    <button id="rosterBtn" class="icon-btn" title="Διανομείς &amp; οχήματα" hidden><svg class="icon"><use href="#ico-settings"/></svg></button>
+    <button id="roleBadge" class="role-badge" title="Αλλαγή χρήστη">
+      <svg class="icon"><use href="#ico-user"/></svg>
+      <b id="roleBadgeText">—</b>
+      <svg class="icon" style="width:.8em;height:.8em;"><use href="#ico-swap"/></svg>
+    </button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="stats" id="stats"></div>
+
+  <div class="controls-row">
+    <div class="tabs" role="tablist" id="sectionTabs">
+      <button class="tab" role="tab" data-section="active" aria-selected="true">Ενεργές</button>
+      <button class="tab" role="tab" data-section="scheduled">Προγραμματισμένες</button>
+      <button class="tab" role="tab" data-section="history">Ιστορικό</button>
+    </div>
+
+    <div class="filter-row">
+      <div class="chip-group" id="areaChips">
+        <button class="chip" data-area="ALL" aria-pressed="true">Όλες</button>
+        <button class="chip" data-area="ΠΟΛΗ" aria-pressed="false"><svg class="icon"><use href="#ico-city"/></svg> Πόλη</button>
+        <button class="chip" data-area="ΕΞΩ" aria-pressed="false"><svg class="icon"><use href="#ico-road"/></svg> Έξω</button>
+        <button class="chip" data-area="ΜΑΓΑΖΙ" aria-pressed="false"><svg class="icon"><use href="#ico-store"/></svg> Μαγαζί</button>
+      </div>
+      <button class="chip mine-toggle" id="mineToggle" aria-pressed="false" hidden>Μόνο δικές μου</button>
+      <div class="search-box">
+        <svg class="icon"><use href="#ico-search"/></svg>
+        <input id="searchInput" type="search" placeholder="Αναζήτηση πελάτη ή τηλεφώνου…">
+      </div>
+    </div>
+  </div>
+
+  <div class="order-grid" id="orderGrid"></div>
+</div>
+
+<button class="fab" id="newOrderFab"><svg viewBox="0 0 24 24"><use href="#ico-plus"/></svg> Νέα παραγγελία</button>
+
+<!-- role overlay -->
+<div class="role-overlay" id="roleOverlay" hidden>
+  <div class="role-wrap">
+<img class="brand-mark" src="data:image/jpeg;base64,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" alt="ZGAS">
+    <h1>Ποιος είσαι;</h1>
+    <p class="lead">Διάλεξε ρόλο για να συνεχίσεις. Το θυμόμαστε σε αυτή τη συσκευή.</p>
+
+    <div class="role-section">
+      <h3>Διοίκηση</h3>
+      <button class="role-option admin" data-role-admin>
+        <span class="oi"><svg class="icon"><use href="#ico-settings"/></svg></span>
+        <span><span class="ot">Διοίκηση / Επόπτης</span><br><span class="os">Πλήρης πρόσβαση, καταχώρηση &amp; ανάθεση</span></span>
+      </button>
+    </div>
+
+    <div class="role-section">
+      <h3>Διανομείς &amp; οχήματα</h3>
+      <div id="roleDrivers"></div>
+    </div>
+  </div>
+</div>
+
+<!-- new/edit order modal -->
+<div class="modal-overlay" id="orderModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="orderModalTitle">Νέα παραγγελία</h2>
+      <button class="icon-btn" id="orderModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <form id="orderForm">
+      <input type="hidden" id="f-id">
+      <div class="form-grid">
+        <div class="field span2">
+          <label for="f-phone">Τηλέφωνο</label>
+          <input id="f-phone" type="tel" autocomplete="off" placeholder="Γράψε πρώτα το τηλέφωνο — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
+          <div class="phone-suggest" id="phoneSuggest" hidden></div>
+          <p class="field-hint" id="custHint" hidden></p>
+        </div>
+        <div class="field span2">
+          <label for="f-customer">Πελάτης *</label>
+          <input id="f-customer" list="customerNameList" required autocomplete="off">
+          <datalist id="customerNameList"></datalist>
+        </div>
+        <div class="field">
+          <label for="f-area">Περιοχή *</label>
+          <select id="f-area" required>
+            <option value="ΠΟΛΗ">Πόλη</option>
+            <option value="ΕΞΩ">Έξω</option>
+            <option value="ΜΑΓΑΖΙ">Μαγαζί (παραλαβή)</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-address">Διεύθυνση</label>
+          <input id="f-address" autocomplete="off">
+        </div>
+        <div class="field span2">
+          <label>Είδη παραγγελίας</label>
+          <datalist id="codeList"></datalist>
+          <div id="itemsList"></div>
+          <button type="button" class="btn btn-ghost add-item-btn" id="addItemBtn">+ Προσθήκη κωδικού</button>
+          <div class="items-total-row"><span>Σύνολο</span><span id="itemsTotal">0,00 €</span></div>
+        </div>
+        <div class="field">
+          <label for="f-payment">Πληρωμή</label>
+          <select id="f-payment">
+            <option value="">—</option>
+            <option>Μετρητοίς</option>
+            <option>Κάρτα</option>
+            <option>Πίστωση</option>
+            <option>Προπληρωμή</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-deliverer">Διανομέας / όχημα</label>
+          <select id="f-deliverer"><option value="">Ανάθεση αργότερα</option></select>
+        </div>
+        <div class="field">
+          <label for="f-scheduled">Προγραμματισμός για</label>
+          <input id="f-scheduled" type="date">
+        </div>
+        <div class="field span2">
+          <label for="f-notes">Σημειώσεις</label>
+          <textarea id="f-notes"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="orderCancelBtn">Άκυρο</button>
+        <button type="submit" class="btn btn-primary">Αποθήκευση</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- cash till: all deliverers -->
+<div class="modal-overlay" id="cashModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Ταμεία διανομέων</h2>
+      <button class="icon-btn" id="cashModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Μετρητά από ολοκληρωμένες παραγγελίες που δεν έχουν ακόμη τακτοποιηθεί.</p>
+    <div id="cashList"></div>
+  </div>
+</div>
+
+<!-- cash till: one deliverer -->
+<div class="modal-overlay" id="cashDetailOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="cashDetailTitle">Ταμείο</h2>
+      <button class="icon-btn" id="cashDetailClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <div id="cashDetailList"></div>
+    <div class="cash-total-row"><span>Σύνολο προς τακτοποίηση</span><span id="cashDetailTotal">0,00 €</span></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cashPrintBtn">Εκτύπωση</button>
+      <button type="button" class="btn btn-primary" id="cashCloseBtn">Κλείσιμο ταμείου</button>
+    </div>
+  </div>
+</div>
+
+<!-- generic confirmation dialog (replaces window.confirm, which some embeds block silently) -->
+<div class="modal-overlay" id="confirmDialogOverlay" hidden>
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head">
+      <h2 id="confirmDialogTitle">Επιβεβαίωση</h2>
+    </div>
+    <p id="confirmDialogMsg" style="font-size:.875rem;color:var(--ink-muted);margin-top:0;"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="confirmDialogCancel">Άκυρο</button>
+      <button type="button" class="btn btn-primary btn-danger" id="confirmDialogYes">Διαγραφή</button>
+    </div>
+  </div>
+</div>
+
+<!-- confirm new customer -->
+<div class="modal-overlay" id="confirmCustomerOverlay" hidden>
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-head">
+      <h2>Νέος πελάτης;</h2>
+    </div>
+    <p id="confirmCustomerText" style="font-size:.875rem;color:var(--ink-muted);margin-top:0;"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="confirmCustomerNo">Όχι, μόνο η παραγγελία</button>
+      <button type="button" class="btn btn-primary" id="confirmCustomerYes">Καταχώρηση πελάτη</button>
+    </div>
+  </div>
+</div>
+
+<!-- customers modal -->
+<div class="modal-overlay" id="customersModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Πελάτες</h2>
+      <button class="icon-btn" id="customersModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <div class="search-box" style="margin-bottom:12px;">
+      <svg class="icon"><use href="#ico-search"/></svg>
+      <input id="customerSearchInput" type="search" placeholder="Αναζήτηση πελάτη, διεύθυνσης ή τηλεφώνου…">
+    </div>
+    <div id="customersList"></div>
+    <button class="btn btn-primary" id="newCustomerBtn" style="width:100%;margin-top:12px;">+ Νέος πελάτης</button>
+  </div>
+</div>
+
+<!-- customer form modal -->
+<div class="modal-overlay" id="customerFormOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2 id="customerFormTitle">Νέος πελάτης</h2>
+      <button class="icon-btn" id="customerFormClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <form id="customerForm">
+      <input type="hidden" id="fc-id">
+      <div class="form-grid">
+        <div class="field span2">
+          <label for="fc-name">Όνομα *</label>
+          <input id="fc-name" required autocomplete="off">
+        </div>
+        <div class="field span2">
+          <label for="fc-address">Διεύθυνση</label>
+          <input id="fc-address" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="fc-phone">Τηλέφωνο</label>
+          <input id="fc-phone" type="tel" autocomplete="off">
+        </div>
+        <div class="field span2">
+          <label for="fc-notes">Παρατηρήσεις</label>
+          <textarea id="fc-notes"></textarea>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="customerFormCancel">Άκυρο</button>
+        <button type="submit" class="btn btn-primary">Αποθήκευση</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- roster modal -->
+<div class="modal-overlay" id="rosterModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Διανομείς &amp; οχήματα</h2>
+      <button class="icon-btn" id="rosterModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <div id="rosterList"></div>
+    <form class="add-roster" id="rosterForm">
+      <input id="r-name" placeholder="Όνομα (π.χ. Μανώλης ή ΦΟΡΤΗΓΟ Β)" required>
+      <select id="r-type"><option value="person">Άτομο</option><option value="vehicle">Όχημα</option></select>
+      <button class="btn btn-primary" type="submit">Προσθήκη</button>
+    </form>
+  </div>
+</div>
+
+<div id="receiptArea" aria-hidden="true"></div>
+<div id="receiptToolbar" class="receipt-toolbar">
+  <div class="rt-msg">Έτοιμο για εκτύπωση — πάτησε <kbd>Ctrl</kbd>+<kbd>P</kbd> (<kbd>⌘</kbd>+<kbd>P</kbd> σε Mac) ή το κουμπί «Εκτύπωση»</div>
+  <div class="rt-actions">
+    <button type="button" id="receiptPrintNowBtn" class="btn btn-primary">Εκτύπωση</button>
+    <button type="button" id="receiptCloseBtn" class="btn btn-ghost">Κλείσιμο</button>
+  </div>
+</div>
+
+<!--
+  Firebase (optional). Loaded from Google's CDN — this only works once the page is
+  served on its own (e.g. Firebase Hosting or any normal web host), NOT while viewed
+  as a Claude Artifact, since that sandbox only allows scripts from a short allow-list
+  and gstatic.com isn't on it. When these fail to load, typeof firebase stays
+  'undefined' below and the app quietly falls back to the Claude Artifact "db"
+  capability (if available) or local offline mode — see initFirebase()/boot().
+-->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- Firebase configuration ----------------
+     Paste your web app's config here (Firebase console → Project settings →
+     General → "Your apps" → SDK setup and configuration → Config). Leaving
+     projectId empty keeps the app on its previous storage (Claude Artifact db,
+     or local offline mode) so nothing breaks until you fill this in. */
+  var FIREBASE_CONFIG = {
+      apiKey: "AIzaSyClM770YTlVAQp1gh0BuqFOf7DE37wdWSs",
+  authDomain: "dianomi-82617.firebaseapp.com",
+  projectId: "dianomi-82617",
+  storageBucket: "dianomi-82617.firebasestorage.app",
+  messagingSenderId: "175370424759",
+  appId: "1:175370424759:web:9bdd8639cd8e1ac74a5832",
+  };
+
+  /* ---------------- constants ---------------- */
+  var HOT_CODES = ['0010', '0010Π', '0025Π'];
+  var DELIVERER_PALETTE = ['#3B82F6','#8B5CF6','#14B8A6','#EC4899','#6366F1','#0EA5A6','#B4530A','#64748B','#D6409F','#2F855A'];
+  var AREA_META = {
+    'ΠΟΛΗ':   {label:'Πόλη',   icon:'ico-city'},
+    'ΕΞΩ':    {label:'Έξω',    icon:'ico-road'},
+    'ΜΑΓΑΖΙ': {label:'Μαγαζί', icon:'ico-store'}
+  };
+  var STATUS_META = {
+    'Σε εξέλιξη': {cls:'st-pending', short:'Σε εξέλιξη'},
+    'Σε διανομή': {cls:'st-transit', short:'Σε διανομή'},
+    'Ολοκληρώθηκε': {cls:'st-done', short:'Ολοκληρώθηκε'},
+    'Ακυρώθηκε': {cls:'st-cancel', short:'Ακυρώθηκε'}
+  };
+  var NEXT_STATUS = {'Σε εξέλιξη':'Σε διανομή','Σε διανομή':'Ολοκληρώθηκε'};
+  var NEXT_LABEL = {'Σε εξέλιξη':'Ξεκίνα διανομή','Σε διανομή':'Ολοκληρώθηκε ✓'};
+  var PAYMENT_META = {
+    'Μετρητοίς':  {cls:'pill-pay-cash'},
+    'Κάρτα':      {cls:'pill-pay-card'},
+    'Πίστωση':    {cls:'pill-pay-credit'},
+    'Προπληρωμή': {cls:'pill-pay-prepaid'}
+  };
+
+  /* ---------------- state ---------------- */
+  var db = null;
+  var offline = false;
+  var orders = [];      // {id, ...fields}
+  var deliverers = [];  // {id, name, type, active}
+  var customers = [];   // {id, name, address, phone, notes}
+  var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
+  var filters = {section:'active', area:'ALL', search:'', mineOnly:false};
+  var customerSearch = '';
+  var knownCodes = new Set();
+
+  var localSeq = 1;
+
+  /* ---------------- helpers ---------------- */
+  function normPhone(s){
+    return String(s==null?'':s).replace(/\D+/g,'');
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function fmtMoney(n){
+    if(n===undefined||n===null||n==='') return '';
+    var v = Number(n);
+    if(isNaN(v)) return '';
+    return v.toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+  }
+  function fmtRelative(iso){
+    if(!iso) return '';
+    var d = new Date(iso), now = new Date();
+    var diffMs = now - d;
+    var mins = Math.round(diffMs/60000);
+    if(mins < 1) return 'μόλις τώρα';
+    if(mins < 60) return 'πριν ' + mins + "'";
+    var hrs = Math.round(mins/60);
+    if(hrs < 24) return 'πριν ' + hrs + 'ω';
+    var days = Math.round(hrs/24);
+    return 'πριν ' + days + 'μ';
+  }
+  function fmtDateShort(dateStr){
+    if(!dateStr) return '';
+    var p = dateStr.split('-');
+    if(p.length!==3) return dateStr;
+    return p[2] + '/' + p[1];
+  }
+  function todayStr(){
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
+  function isSameDay(iso, dayStr){
+    if(!iso) return false;
+    var d = new Date(iso);
+    var s = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    return s === dayStr;
+  }
+  function uid(){ return 'local-' + (localSeq++) + '-' + Date.now(); }
+
+  function activeDeliverers(){ return deliverers.filter(function(d){ return d.active !== false; }); }
+  function nextPaletteColor(){ return DELIVERER_PALETTE[deliverers.length % DELIVERER_PALETTE.length]; }
+  function getDelivererByName(name){
+    if(!name) return null;
+    return deliverers.find(function(d){ return d.name === name; }) || null;
+  }
+  function getDelivererColor(name){
+    var d = getDelivererByName(name);
+    return d && d.color ? d.color : null;
+  }
+
+  /* ---------------- persistence layer (db capability, with local fallback) ---------------- */
+  function ordersCol(){ return db.collection('orders'); }
+  function deliverersCol(){ return db.collection('deliverers'); }
+  function customersCol(){ return db.collection('customers'); }
+
+  function createOrder(data){
+    if(offline){
+      var o = Object.assign({id:uid()}, data);
+      orders.unshift(o);
+      renderAll();
+      return Promise.resolve();
+    }
+    return ordersCol().add(data);
+  }
+  function updateOrder(id, patch){
+    if(offline){
+      var o = orders.find(function(x){ return x.id===id; });
+      if(o) Object.assign(o, patch);
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('orders/'+id).update(patch);
+  }
+  function deleteOrder(id){
+    if(offline){
+      orders = orders.filter(function(x){ return x.id!==id; });
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('orders/'+id).delete();
+  }
+  function createDeliverer(data){
+    if(offline){
+      var d = Object.assign({id:uid()}, data);
+      deliverers.push(d);
+      renderAll();
+      return Promise.resolve();
+    }
+    return deliverersCol().add(data);
+  }
+  function updateDeliverer(id, patch){
+    if(offline){
+      var d = deliverers.find(function(x){ return x.id===id; });
+      if(d) Object.assign(d, patch);
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('deliverers/'+id).update(patch);
+  }
+  function createCustomer(data){
+    if(offline){
+      var c = Object.assign({id:uid()}, data);
+      customers.push(c);
+      renderAll();
+      return Promise.resolve(c);
+    }
+    return customersCol().add(data);
+  }
+  function updateCustomer(id, patch){
+    if(offline){
+      var c = customers.find(function(x){ return x.id===id; });
+      if(c) Object.assign(c, patch);
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('customers/'+id).update(patch);
+  }
+  function deleteCustomer(id){
+    if(offline){
+      customers = customers.filter(function(x){ return x.id!==id; });
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('customers/'+id).delete();
+  }
+  function findCustomerByName(name){
+    if(!name) return null;
+    var norm = String(name).trim().toLowerCase();
+    if(!norm) return null;
+    return customers.find(function(c){ return String(c.name||'').trim().toLowerCase() === norm; }) || null;
+  }
+  /** Exact match on digits only; requires a reasonably complete number
+   *  so we don't fire on a two-digit prefix while someone is still typing. */
+  function findCustomerByPhone(phone){
+    var qd = normPhone(phone);
+    if(qd.length < 8) return null;
+    return customers.find(function(c){ return normPhone(c.phone) === qd; }) || null;
+  }
+  /** Fill blanks on an already-known customer; never overwrites details
+   *  staff already recorded. */
+  function fillCustomerBlanks(existing, orderData){
+    var patch = {};
+    if(orderData.phone && !existing.phone) patch.phone = orderData.phone;
+    if(orderData.address && !existing.address) patch.address = orderData.address;
+    if(Object.keys(patch).length){
+      patch.updatedAt = new Date().toISOString();
+      updateCustomer(existing.id, patch);
+    }
+  }
+
+  /* ---------------- role ---------------- */
+  function loadRole(){
+    try{
+      var raw = localStorage.getItem('zgas_role');
+      if(raw) role = JSON.parse(raw);
+    }catch(e){}
+  }
+  function saveRole(r){
+    role = r;
+    try{ localStorage.setItem('zgas_role', JSON.stringify(r)); }catch(e){}
+    filters.mineOnly = (r.type === 'driver');
+    updateRoleUI();
+    renderAll();
+  }
+  function updateRoleUI(){
+    var badgeText = document.getElementById('roleBadgeText');
+    var rosterBtn = document.getElementById('rosterBtn');
+    var mineToggle = document.getElementById('mineToggle');
+    if(!role){
+      badgeText.textContent = 'Επιλογή…';
+      rosterBtn.hidden = true;
+      mineToggle.hidden = true;
+      return;
+    }
+    if(role.type === 'admin'){
+      badgeText.textContent = 'Διοίκηση';
+      rosterBtn.hidden = false;
+      mineToggle.hidden = true;
+    } else {
+      badgeText.textContent = role.name;
+      rosterBtn.hidden = true;
+      mineToggle.hidden = false;
+      mineToggle.setAttribute('aria-pressed', String(!!filters.mineOnly));
+    }
+  }
+
+  function renderRoleOverlay(){
+    var box = document.getElementById('roleDrivers');
+    box.innerHTML = '';
+    var list = activeDeliverers();
+    if(list.length === 0){
+      box.innerHTML = '<p style="font-size:.8rem;color:var(--ink-muted);">Δεν έχουν προστεθεί ακόμη διανομείς. Επίλεξε «Διοίκηση» και πρόσθεσέ τους από τις ρυθμίσεις.</p>';
+      return;
+    }
+    list.forEach(function(d){
+      var btn = document.createElement('button');
+      btn.className = 'role-option';
+      btn.innerHTML =
+        '<span class="oi"><svg class="icon"><use href="#' + (d.type==='vehicle' ? 'ico-truck' : 'ico-user') + '"/></svg></span>' +
+        '<span><span class="ot">' + esc(d.name) + '</span><br><span class="os">' + (d.type==='vehicle' ? 'Όχημα διανομής' : 'Διανομέας') + '</span></span>';
+      btn.addEventListener('click', function(){
+        saveRole({type:'driver', name:d.name});
+        document.getElementById('roleOverlay').hidden = true;
+      });
+      box.appendChild(btn);
+    });
+  }
+
+  /* ---------------- rendering ---------------- */
+  function getFilteredOrders(){
+    var dayNow = todayStr();
+    return orders.filter(function(o){
+      if(filters.area !== 'ALL' && o.area !== filters.area) return false;
+      if(filters.search){
+        var q = filters.search.toLowerCase();
+        var qDigits = normPhone(filters.search);
+        var inName = o.customer && o.customer.toLowerCase().indexOf(q) !== -1;
+        var inPhone = qDigits.length >= 3 && normPhone(o.phone).indexOf(qDigits) !== -1;
+        var inCustPhone = false;
+        if(!inName && !inPhone && qDigits.length >= 3){
+          var cust = findCustomerByName(o.customer);
+          if(cust) inCustPhone = normPhone(cust.phone).indexOf(qDigits) !== -1;
+        }
+        if(!inName && !inPhone && !inCustPhone) return false;
+      }
+      if(filters.mineOnly && role && role.type === 'driver' && o.deliverer !== role.name) return false;
+
+      if(filters.section === 'scheduled'){
+        return !!o.scheduledDate && o.status !== 'Ολοκληρώθηκε' && o.status !== 'Ακυρώθηκε';
+      }
+      if(filters.section === 'history'){
+        return o.status === 'Ολοκληρώθηκε' || o.status === 'Ακυρώθηκε';
+      }
+      return o.status === 'Σε εξέλιξη' || o.status === 'Σε διανομή';
+    }).sort(function(a,b){
+      if(filters.section === 'scheduled'){
+        return (a.scheduledDate||'').localeCompare(b.scheduledDate||'');
+      }
+      if(filters.section === 'history'){
+        return (b.updatedAt||'').localeCompare(a.updatedAt||'');
+      }
+      return (a.createdAt||'').localeCompare(b.createdAt||'');
+    });
+  }
+
+  function renderStats(){
+    var box = document.getElementById('stats');
+    var pool = filters.area === 'ALL' ? orders : orders.filter(function(o){ return o.area===filters.area; });
+    var pending = pool.filter(function(o){ return o.status==='Σε εξέλιξη'; }).length;
+    var transit = pool.filter(function(o){ return o.status==='Σε διανομή'; }).length;
+    var doneToday = pool.filter(function(o){ return o.status==='Ολοκληρώθηκε' && isSameDay(o.updatedAt, todayStr()); }).length;
+    box.innerHTML =
+      '<div class="stat-tile pending"><div class="n">'+pending+'</div><div class="l">Σε εξέλιξη</div></div>' +
+      '<div class="stat-tile transit"><div class="n">'+transit+'</div><div class="l">Σε διανομή</div></div>' +
+      '<div class="stat-tile done"><div class="n">'+doneToday+'</div><div class="l">Ολοκληρωμένες σήμερα</div></div>';
+  }
+
+  function delivererOptionsHTML(selected, includeEmpty){
+    var html = includeEmpty ? '<option value="">Χωρίς ανάθεση</option>' : '';
+    activeDeliverers().forEach(function(d){
+      html += '<option value="'+esc(d.name)+'"'+(d.name===selected?' selected':'')+'>'+esc(d.name)+'</option>';
+    });
+    return html;
+  }
+
+  function renderOrderCard(o){
+    var am = AREA_META[o.area] || {label:o.area, icon:'ico-box'};
+    var sm = STATUS_META[o.status] || {cls:'st-pending', short:o.status};
+    var pm = PAYMENT_META[o.payment];
+    var card = document.createElement('div');
+    card.className = 'order-row';
+
+    var canEditDetails = role && role.type === 'admin';
+    var canTouchAssignment = role && (role.type === 'admin' || (role.type==='driver' && (!o.deliverer || o.deliverer===role.name)));
+    var canTouchStatus = role && (role.type === 'admin' || (role.type==='driver' && o.deliverer===role.name));
+
+    var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
+    var itemsSummary = '';
+    if(lineItems.length === 1){
+      var it0 = lineItems[0];
+      var parts0 = [];
+      if(it0.code) parts0.push('#'+it0.code);
+      if(it0.qty) parts0.push('×'+it0.qty);
+      itemsSummary = parts0.join(' ');
+      if(it0.amount) itemsSummary += (itemsSummary ? '  ' : '') + fmtMoney(it0.amount);
+    } else if(lineItems.length > 1){
+      itemsSummary = lineItems.length + ' είδη';
+      if(o.amount) itemsSummary += '  ' + fmtMoney(o.amount);
+    }
+
+    var html = '';
+    html += '<div class="row-main">';
+    html += '  <span class="customer"></span>';
+    html += '  <span class="area-mini"><svg class="icon"><use href="#'+am.icon+'"/></svg><span>'+esc(am.label)+'</span></span>';
+    if(itemsSummary) html += '  <span class="items-summary"></span>';
+    if(o.payment) html += '  <span class="pill '+(pm?pm.cls:'pill-area')+'">'+esc(o.payment)+'</span>';
+    html += '  <span class="row-spacer"></span>';
+    if(canTouchStatus){
+      html += '  <select class="pill-select status-select '+sm.cls+'"></select>';
+    } else {
+      html += '  <span class="pill '+sm.cls.replace('st-','pill-')+'" style="background:var(--'+sm.cls+'-bg);color:var(--'+sm.cls+'-fg);">'+esc(sm.short)+'</span>';
+    }
+    if(role && role.type === 'admin'){
+      html += '  <select class="deliverer-select"></select>';
+    } else if(!o.deliverer && canTouchAssignment){
+      html += '  <button class="claim-btn">Ανάληψη</button>';
+    } else if(o.deliverer){
+      var dChipColor = getDelivererColor(o.deliverer);
+      html += '  <span class="deliverer-chip">' + (dChipColor ? '<span class="dot" style="background:'+dChipColor+';"></span>' : '') + '<svg class="icon"><use href="#'+(isVehicle(o.deliverer)?'ico-truck':'ico-user')+'"/></svg><span class="deliverer-name-val"></span></span>';
+    }
+    if(o.deliverer===role?.name && role?.type==='driver' && NEXT_STATUS[o.status]){
+      html += '  <button class="advance-btn">'+esc(NEXT_LABEL[o.status])+'</button>';
+    }
+    html += '  <span class="card-actions-mini">';
+    html += '    <button class="icon-btn print-btn" title="Εκτύπωση απόδειξης"><svg class="icon"><use href="#ico-printer"/></svg></button>';
+    if(canEditDetails){
+      html += '    <button class="icon-btn edit-btn" title="Επεξεργασία"><svg class="icon"><use href="#ico-edit"/></svg></button>';
+      html += '    <button class="icon-btn del-btn" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
+    }
+    html += '  </span>';
+    html += '</div>';
+    html += '<div class="row-sub"></div>';
+
+    card.innerHTML = html;
+
+    var cardDelColor = getDelivererColor(o.deliverer);
+    if(cardDelColor) card.style.borderLeft = '4px solid ' + cardDelColor;
+
+    // fill text-content (escaped) fields
+    card.querySelector('.customer').textContent = o.customer || '(χωρίς όνομα)';
+    var itemsEl = card.querySelector('.items-summary'); if(itemsEl) itemsEl.textContent = itemsSummary;
+    var delNameEl = card.querySelector('.deliverer-name-val'); if(delNameEl) delNameEl.textContent = o.deliverer;
+
+    var subParts = [];
+    if(o.phone) subParts.push(o.phone);
+    if(o.address) subParts.push(o.address);
+    if(o.scheduledDate) subParts.push('Για ' + fmtDateShort(o.scheduledDate));
+    if(o.notes) subParts.push(o.notes);
+    subParts.push(fmtRelative(o.createdAt));
+    var subEl = card.querySelector('.row-sub');
+    if(subEl) subEl.textContent = subParts.join('  ·  ');
+
+    // status select
+    var statusSel = card.querySelector('.status-select');
+    if(statusSel){
+      Object.keys(STATUS_META).forEach(function(s){
+        var opt = document.createElement('option');
+        opt.value = s; opt.textContent = STATUS_META[s].short;
+        if(s === o.status) opt.selected = true;
+        statusSel.appendChild(opt);
+      });
+      statusSel.addEventListener('change', function(){
+        var next = statusSel.value;
+        var patch = {status: next, updatedAt: new Date().toISOString()};
+        updateOrder(o.id, patch);
+      });
+    }
+
+    // deliverer select (admin)
+    var delSel = card.querySelector('.deliverer-select');
+    if(delSel){
+      delSel.innerHTML = delivererOptionsHTML(o.deliverer, true);
+      tintDelivererSelect(delSel);
+      delSel.addEventListener('change', function(){
+        updateOrder(o.id, {deliverer: delSel.value, updatedAt: new Date().toISOString()});
+        tintDelivererSelect(delSel);
+      });
+    }
+
+    // claim button
+    var claimBtn = card.querySelector('.claim-btn');
+    if(claimBtn){
+      claimBtn.addEventListener('click', function(){
+        updateOrder(o.id, {deliverer: role.name, updatedAt: new Date().toISOString()});
+      });
+    }
+
+    // advance button
+    var advBtn = card.querySelector('.advance-btn');
+    if(advBtn){
+      advBtn.addEventListener('click', function(){
+        var next = NEXT_STATUS[o.status];
+        if(next) updateOrder(o.id, {status: next, updatedAt: new Date().toISOString()});
+      });
+    }
+
+    // edit / delete / print
+    var editBtn = card.querySelector('.edit-btn');
+    if(editBtn) editBtn.addEventListener('click', function(){ openOrderModal(o); });
+    var delBtn = card.querySelector('.del-btn');
+    if(delBtn) delBtn.addEventListener('click', function(){
+      showConfirm('Διαγραφή της παραγγελίας του/της «'+(o.customer||'')+'»;', function(){ deleteOrder(o.id); });
+    });
+    var printBtn = card.querySelector('.print-btn');
+    if(printBtn) printBtn.addEventListener('click', function(){ printOrderReceipt(o); });
+
+    return card;
+  }
+
+  /* ---------------- thermal receipt (80mm) ---------------- */
+  function buildReceiptHTML(o){
+    var am = AREA_META[o.area] || {label:o.area};
+    var sm = STATUS_META[o.status] || {short:o.status};
+    var now = new Date();
+    var stamp = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear() +
+      ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+    var html = '';
+    html += '<div class="r-brand">ZGAS ΡΕΘΥΜΝΟ</div>';
+    html += '<div class="r-sub">Δελτίο παραγγελίας &amp; διανομής</div>';
+    html += '<hr>';
+    html += '<div class="r-row"><span class="k">Περιοχή</span><span>'+esc(am.label || o.area || '')+'</span></div>';
+    html += '<div class="r-row"><span class="k">Εκτύπωση</span><span>'+esc(stamp)+'</span></div>';
+    html += '<hr>';
+    html += '<div class="r-customer">'+esc(o.customer || '')+'</div>';
+    if(o.address) html += '<div class="r-line"><span class="k">Διεύθ.:</span> <span>'+esc(o.address)+'</span></div>';
+    if(o.phone) html += '<div class="r-line"><span class="k">Τηλ.:</span> <span>'+esc(o.phone)+'</span></div>';
+    html += '<hr>';
+    var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
+    lineItems.forEach(function(it){
+      if(!it.code && !it.qty && !it.amount) return;
+      html += '<div class="r-row r-item-line"><span class="k">'+esc((it.code||'—') + (it.qty ? ' ×'+it.qty : ''))+'</span><span>'+(it.amount ? esc(fmtMoney(it.amount)) : '')+'</span></div>';
+    });
+    if(o.payment){ html += '<div class="r-row"><span class="k">Πληρωμή</span><span>'+esc(o.payment)+'</span></div>'; }
+    if(o.amount){ html += '<div class="r-row r-amount-row"><span class="k">'+(lineItems.length > 1 ? 'Σύνολο' : '')+'</span><span class="r-amount">'+esc(fmtMoney(o.amount))+'</span></div>'; }
+    if(o.deliverer){ html += '<div class="r-row"><span class="k">Διανομέας/Όχημα</span><span>'+esc(o.deliverer)+'</span></div>'; }
+    if(o.scheduledDate){ html += '<div class="r-row"><span class="k">Προγραμματισμός</span><span>' + esc(fmtDateShort(o.scheduledDate)) + '</span></div>'; }
+    if(o.notes){ html += '<hr><div class="r-line"><span class="k">Σημειώσεις:</span> <span>'+esc(o.notes)+'</span></div>'; }
+    html += '<div class="r-status">'+esc(sm.short || o.status || '')+'</div>';
+    html += '<div class="r-sign"><div class="line">Υπογραφή παραλήπτη</div></div>';
+    html += '<div class="r-foot">ΖGAS Ρέθυμνο</div>';
+    return '<div class="receipt">' + html + '</div>';
+  }
+
+  // This app is normally viewed embedded inside another page (the Claude app /
+  // claude.ai around the artifact). Printing straight from there is unreliable
+  // two different ways: (1) in some embeds window.print()/window.open() are
+  // blocked outright, so nothing happens; (2) even when the OS print dialog
+  // does open, Ctrl+P prints the *outer* page's current tab, which includes
+  // everything around our content — wrong paper size, wrong margins, extra
+  // clutter. Neither is something CSS inside our own page can fix, because the
+  // outer chrome lives in a different document our styles can't reach.
+  //
+  // The one approach that reliably isolates JUST the receipt is opening a
+  // brand-new, blank browser tab that we fully control (nothing from the host
+  // page in it) and printing that tab instead.
+  var RECEIPT_PRINT_CSS =
+    "body{margin:0;background:#fff;}" +
+    ".receipt{width:72mm;margin:0 auto;font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;font-size:12px;line-height:1.5;padding:6px 0;}" +
+    ".receipt .r-brand{text-align:center;font-family:'IBM Plex Sans',system-ui,sans-serif;font-weight:700;font-size:15px;letter-spacing:.03em;}" +
+    ".receipt .r-sub{text-align:center;font-size:10.5px;margin-top:2px;}" +
+    ".receipt hr{border:none;border-top:1px dashed #000;margin:8px 0;}" +
+    ".receipt .r-row{display:flex;justify-content:space-between;gap:10px;margin:2px 0;}" +
+    ".receipt .r-row .k{color:#000;}" +
+    ".receipt .r-customer{font-size:15px;font-weight:700;margin:2px 0;}" +
+    ".receipt .r-line{margin:3px 0;overflow-wrap:anywhere;}" +
+    ".receipt .r-amount{font-size:18px;font-weight:700;text-align:right;}" +
+    ".receipt .r-status{text-align:center;font-weight:700;border:1px solid #000;padding:3px;margin:8px 0;text-transform:uppercase;letter-spacing:.05em;}" +
+    ".receipt .r-sign{margin-top:22px;font-size:11px;}" +
+    ".receipt .r-sign .line{border-top:1px solid #000;margin-top:20px;padding-top:3px;}" +
+    ".receipt .r-foot{text-align:center;font-size:10px;margin-top:10px;color:#000;}" +
+    "@media screen{ body{ display:flex; flex-direction:column; align-items:center; padding:16px 12px 24px; } .print-hint{ width:100%; max-width:320px; box-sizing:border-box; background:#1A2229; color:#E9ECEC; font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:13px; text-align:center; padding:14px; line-height:1.4; border-radius:10px; margin-bottom:14px; }" +
+    " .print-hint button{ display:block; width:100%; margin-top:10px; padding:11px; border:none; border-radius:8px; background:#F0C300; color:#1C1A12; font-family:'IBM Plex Sans',system-ui,sans-serif; font-size:14px; font-weight:700; cursor:pointer; }" +
+    " .receipt{ width:320px; box-shadow:0 1px 10px rgba(0,0,0,.15); padding:16px; } }" +
+    "@media print{ .print-hint{ display:none; } }" +
+    "@page{size:80mm auto;margin:3mm;}";
+
+  function openIsolatedPrintWindow(receiptHTML, docTitle){
+    var win = null;
+    try{ win = window.open('', '_blank', 'width=380,height=700'); }catch(e){ win = null; }
+    if(!win) return false;
+    win.document.open();
+    win.document.write(
+      '<!doctype html><html><head><meta charset="utf-8">' +
+      '<title>' + esc(docTitle) + '</title>' +
+      '<style>' + RECEIPT_PRINT_CSS + '</style>' +
+      '</head><body>' +
+      '<div class="print-hint">Πάτησε το κουμπί για εκτύπωση (ή Ctrl+P / ⌘+P)' +
+        '<button type="button" onclick="window.print()">Εκτύπωση</button>' +
+      '</div>' +
+      receiptHTML +
+      '</body></html>'
+    );
+    win.document.close();
+    // A print() call triggered by OUR script (from the opener, or even
+    // immediately here) is not always honored as a genuine user action by
+    // every browser/embedding — that's why we also render a real, clickable
+    // "Εκτύπωση" button written directly into this new tab's own document
+    // above: a click on THAT button is an unambiguous user gesture inside
+    // this window, which is the most reliable way to open the print dialog
+    // when the automatic attempt below doesn't fire one.
+    try{ win.focus(); win.print(); }catch(e){}
+    try{ win.addEventListener('afterprint', function(){ try{ win.close(); }catch(e2){} }); }catch(e){}
+    return true;
+  }
+
+  // Same-page fallback for when pop-ups are blocked: still lets the person see
+  // and manually print the receipt, though (per the note above) actually
+  // isolating it depends on the browser printing the embed's own tab.
+  function enterReceiptMode(receiptHTML){
+    var area = document.getElementById('receiptArea');
+    area.innerHTML = receiptHTML;
+    document.body.classList.add('receipt-mode');
+    window.scrollTo(0,0);
+  }
+  function exitReceiptMode(){
+    document.body.classList.remove('receipt-mode');
+  }
+  document.getElementById('receiptCloseBtn').addEventListener('click', exitReceiptMode);
+  document.getElementById('receiptPrintNowBtn').addEventListener('click', function(){
+    try{ window.print(); }catch(e){}
+  });
+  window.addEventListener('afterprint', exitReceiptMode);
+
+  function printReceiptContent(receiptHTML, docTitle){
+    var opened = openIsolatedPrintWindow(receiptHTML, docTitle);
+    if(!opened){
+      // pop-up blocked: show the on-page preview instead, with instructions
+      enterReceiptMode(receiptHTML);
+      var msgEl = document.querySelector('#receiptToolbar .rt-msg');
+      if(msgEl) msgEl.textContent = 'Τα αναδυόμενα παράθυρα είναι μπλοκαρισμένα — επίτρεψέ τα για σωστή εκτύπωση, ή δοκίμασε Ctrl+P (⌘+P σε Mac)';
+    }
+  }
+
+  function printOrderReceipt(o){
+    printReceiptContent(buildReceiptHTML(o), 'Απόδειξη παραγγελίας');
+  }
+
+  function tintDelivererSelect(sel){
+    var color = getDelivererColor(sel.value);
+    if(color){
+      sel.style.background = color + '22';
+      sel.style.borderColor = color;
+      sel.style.color = color;
+    } else {
+      sel.style.background = '';
+      sel.style.borderColor = '';
+      sel.style.color = '';
+    }
+  }
+  function isVehicle(name){
+    var d = deliverers.find(function(x){ return x.name === name; });
+    return d ? d.type === 'vehicle' : /ΦΟΡΤΗΓΟ|ΟΧΗΜΑ/i.test(name||'');
+  }
+
+  function renderOrders(){
+    var grid = document.getElementById('orderGrid');
+    grid.innerHTML = '';
+    var list = getFilteredOrders();
+    if(list.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      var msg = {
+        active:'Δεν υπάρχουν ενεργές παραγγελίες αυτή τη στιγμή.',
+        scheduled:'Καμία προγραμματισμένη παραγγελία.',
+        history:'Δεν υπάρχει ακόμη ιστορικό.'
+      }[filters.section];
+      empty.innerHTML = '<svg viewBox="0 0 24 24"><use href="#ico-box"/></svg><h3>Καμία παραγγελία</h3><p>'+msg+' Πάτησε «Νέα παραγγελία» για να προσθέσεις.</p>';
+      grid.appendChild(empty);
+      return;
+    }
+    list.forEach(function(o){ grid.appendChild(renderOrderCard(o)); });
+  }
+
+  function renderCodeList(){
+    var dl = document.getElementById('codeList');
+    dl.innerHTML = '';
+    Array.from(knownCodes).sort().forEach(function(c){
+      var opt = document.createElement('option');
+      opt.value = c;
+      dl.appendChild(opt);
+    });
+  }
+
+  /* ---------------- order form: multi-line items ---------------- */
+  function recomputeItemsTotal(){
+    var sum = 0;
+    document.querySelectorAll('#itemsList .item-amount').forEach(function(el){
+      sum += Number(el.value) || 0;
+    });
+    document.getElementById('itemsTotal').textContent = fmtMoney(sum) || '0,00 €';
+  }
+
+  function addItemRow(item){
+    item = item || {};
+    var list = document.getElementById('itemsList');
+    var row = document.createElement('div');
+    row.className = 'item-row';
+    row.innerHTML =
+      '<div class="item-row-fields">' +
+        '<input class="item-code" list="codeList" placeholder="Κωδικός" autocomplete="off">' +
+        '<div class="item-qtybox">' +
+          '<button type="button" class="iq-btn iq-minus" aria-label="Μείωση">−</button>' +
+          '<input class="item-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="0">' +
+          '<button type="button" class="iq-btn iq-plus" aria-label="Αύξηση">+</button>' +
+        '</div>' +
+        '<input class="item-amount" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Ποσό €">' +
+        '<button type="button" class="item-remove" title="Αφαίρεση γραμμής">&times;</button>' +
+      '</div>' +
+      '<div class="item-quick"></div>';
+
+    var codeInput = row.querySelector('.item-code');
+    var qtyInput = row.querySelector('.item-qty');
+    var amountInput = row.querySelector('.item-amount');
+    var quickBox = row.querySelector('.item-quick');
+
+    codeInput.value = item.code || '';
+    qtyInput.value = item.qty || '';
+    amountInput.value = (item.amount === 0 || item.amount) ? item.amount : '';
+
+    function syncQuickPressed(){
+      Array.from(quickBox.children).forEach(function(b){ b.setAttribute('aria-pressed', String(b.textContent === codeInput.value)); });
+    }
+    HOT_CODES.forEach(function(code){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = code;
+      btn.addEventListener('click', function(){
+        codeInput.value = (codeInput.value === code) ? '' : code;
+        syncQuickPressed();
+      });
+      quickBox.appendChild(btn);
+    });
+    syncQuickPressed();
+    codeInput.addEventListener('input', syncQuickPressed);
+
+    row.querySelector('.iq-minus').addEventListener('click', function(){
+      qtyInput.value = Math.max(0, (parseInt(qtyInput.value, 10) || 0) - 1);
+    });
+    row.querySelector('.iq-plus').addEventListener('click', function(){
+      qtyInput.value = (parseInt(qtyInput.value, 10) || 0) + 1;
+    });
+    amountInput.addEventListener('input', recomputeItemsTotal);
+    row.querySelector('.item-remove').addEventListener('click', function(){
+      if(list.children.length > 1){
+        row.remove();
+      } else {
+        codeInput.value = ''; qtyInput.value = ''; amountInput.value = ''; syncQuickPressed();
+      }
+      recomputeItemsTotal();
+    });
+
+    list.appendChild(row);
+    return row;
+  }
+
+  function resetItemsList(items){
+    var list = document.getElementById('itemsList');
+    list.innerHTML = '';
+    if(items && items.length){
+      items.forEach(function(it){ addItemRow(it); });
+    } else {
+      addItemRow({});
+    }
+    recomputeItemsTotal();
+  }
+
+  function collectItemsFromForm(){
+    return Array.from(document.querySelectorAll('#itemsList .item-row')).map(function(row){
+      var code = row.querySelector('.item-code').value.trim();
+      var qtyRaw = row.querySelector('.item-qty').value;
+      var amountRaw = row.querySelector('.item-amount').value;
+      return {
+        code: code,
+        qty: qtyRaw ? Number(qtyRaw) : null,
+        amount: amountRaw ? Number(amountRaw) : null
+      };
+    }).filter(function(it){ return it.code || it.qty || it.amount; });
+  }
+
+  document.getElementById('addItemBtn').addEventListener('click', function(){
+    addItemRow({});
+  });
+
+  function renderDelivererFormSelect(){
+    var sel = document.getElementById('f-deliverer');
+    var current = sel.value;
+    sel.innerHTML = '<option value="">Ανάθεση αργότερα</option>' + delivererOptionsHTML(current, false);
+  }
+
+  function renderRoster(){
+    var box = document.getElementById('rosterList');
+    box.innerHTML = '';
+    if(deliverers.length === 0){
+      box.innerHTML = '<p style="font-size:.82rem;color:var(--ink-muted);">Δεν υπάρχουν ακόμη διανομείς ή οχήματα. Πρόσθεσε τον πρώτο παρακάτω.</p>';
+      return;
+    }
+    deliverers.forEach(function(d, idx){
+      var color = d.color || DELIVERER_PALETTE[idx % DELIVERER_PALETTE.length];
+      var row = document.createElement('div');
+      row.className = 'roster-row';
+      row.innerHTML =
+        '<span class="oi" style="background:'+color+'22;color:'+color+';"><svg class="icon"><use href="#'+(d.type==='vehicle'?'ico-truck':'ico-user')+'"/></svg></span>' +
+        '<span class="name"></span>' +
+        '<span class="rtype">'+(d.type==='vehicle'?'Όχημα':'Άτομο')+'</span>' +
+        '<input type="color" class="roster-color" title="Χρώμα διανομέα" value="'+color+'">' +
+        '<button class="cash-btn icon-btn" title="Ταμείο"><svg class="icon"><use href="#ico-cash"/></svg></button>' +
+        '<button class="switch" role="switch" aria-checked="'+(d.active!==false)+'" title="Ενεργός/η"></button>';
+      row.querySelector('.name').textContent = d.name;
+      row.querySelector('.switch').addEventListener('click', function(e){
+        updateDeliverer(d.id, {active: d.active === false});
+      });
+      row.querySelector('.roster-color').addEventListener('change', function(e){
+        updateDeliverer(d.id, {color: e.target.value});
+      });
+      row.querySelector('.cash-btn').addEventListener('click', function(){
+        openCashTill(d.name);
+      });
+      box.appendChild(row);
+    });
+  }
+
+  /* ---------------- cash till per deliverer ---------------- */
+  var cashDetailDriver = null;
+
+  function computeCashFor(name){
+    var list = orders.filter(function(o){
+      return o.deliverer === name && o.payment === 'Μετρητοίς' && o.status === 'Ολοκληρώθηκε' && !o.settled;
+    });
+    var total = list.reduce(function(sum, o){ return sum + (Number(o.amount) || 0); }, 0);
+    return {list: list, total: total};
+  }
+
+  function openCashModal(){
+    renderCashList();
+    document.getElementById('cashModalOverlay').hidden = false;
+  }
+  function renderCashList(){
+    var box = document.getElementById('cashList');
+    box.innerHTML = '';
+    if(deliverers.length === 0){
+      box.innerHTML = '<p style="font-size:.82rem;color:var(--ink-muted);">Δεν υπάρχουν ακόμη διανομείς.</p>';
+      return;
+    }
+    deliverers.forEach(function(d, idx){
+      var color = d.color || DELIVERER_PALETTE[idx % DELIVERER_PALETTE.length];
+      var c = computeCashFor(d.name);
+      var row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'cash-row';
+      row.innerHTML = '<span class="dot" style="background:'+color+';"></span><span class="cn"></span><span class="ct"></span>';
+      row.querySelector('.cn').textContent = d.name;
+      row.querySelector('.ct').textContent = fmtMoney(c.total) || '0,00 €';
+      row.addEventListener('click', function(){ openCashDetail(d.name); });
+      box.appendChild(row);
+    });
+  }
+
+  function openCashDetail(name){
+    cashDetailDriver = name;
+    renderCashDetail();
+    document.getElementById('cashDetailOverlay').hidden = false;
+  }
+  function renderCashDetail(){
+    var name = cashDetailDriver;
+    document.getElementById('cashDetailTitle').textContent = 'Ταμείο — ' + name;
+    var c = computeCashFor(name);
+    var list = document.getElementById('cashDetailList');
+    list.innerHTML = '';
+    if(c.list.length === 0){
+      list.innerHTML = '<p style="font-size:.82rem;color:var(--ink-muted);">Δεν υπάρχει ανεξόφλητο μετρητό ταμείο.</p>';
+    } else {
+      c.list.forEach(function(o){
+        var row = document.createElement('div');
+        row.className = 'cash-detail-row';
+        row.innerHTML = '<span class="cn"></span><span class="ca"></span>';
+        row.querySelector('.cn').textContent = o.customer || '';
+        row.querySelector('.ca').textContent = fmtMoney(o.amount);
+        list.appendChild(row);
+      });
+    }
+    document.getElementById('cashDetailTotal').textContent = fmtMoney(c.total) || '0,00 €';
+    var isAdmin = role && role.type === 'admin';
+    document.getElementById('cashCloseBtn').hidden = !isAdmin;
+    document.getElementById('cashCloseBtn').disabled = c.list.length === 0;
+    document.getElementById('cashPrintBtn').hidden = c.list.length === 0;
+  }
+
+  function printCashSummary(name){
+    var c = computeCashFor(name);
+    var now = new Date();
+    var stamp = String(now.getDate()).padStart(2,'0') + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + now.getFullYear() +
+      ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+
+    var html = '';
+    html += '<div class="r-brand">ZGAS ΡΕΘΥΜΝΟ</div>';
+    html += '<div class="r-sub">Κλείσιμο ταμείου διανομέα</div><hr>';
+    html += '<div class="r-row"><span class="k">Διανομέας</span><span>'+esc(name)+'</span></div>';
+    html += '<div class="r-row"><span class="k">Ώρα</span><span>' + esc(stamp) + '</span></div><hr>';
+    c.list.forEach(function(o){
+      html += '<div class="r-row"><span>'+esc(o.customer || '')+'</span><span>'+esc(fmtMoney(o.amount))+'</span></div>';
+    });
+    html += '<hr><div class="r-amount">Σύνολο: '+esc(fmtMoney(c.total))+'</div>';
+    html += '<div class="r-sign"><div class="line">Υπογραφή διανομέα</div></div>';
+
+    printReceiptContent('<div class="receipt">' + html + '</div>', 'Κλείσιμο ταμείου');
+  }
+
+  document.getElementById('cashBtn').addEventListener('click', function(){
+    if(!role) return;
+    if(role.type === 'admin') openCashModal();
+    else openCashDetail(role.name);
+  });
+  document.getElementById('cashModalClose').addEventListener('click', function(){ document.getElementById('cashModalOverlay').hidden = true; });
+  document.getElementById('cashModalOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('cashDetailClose').addEventListener('click', function(){ document.getElementById('cashDetailOverlay').hidden = true; });
+  document.getElementById('cashDetailOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('cashPrintBtn').addEventListener('click', function(){ printCashSummary(cashDetailDriver); });
+  document.getElementById('cashCloseBtn').addEventListener('click', function(){
+    var c = computeCashFor(cashDetailDriver);
+    if(c.list.length === 0) return;
+    showConfirm('Κλείσιμο ταμείου για «' + cashDetailDriver + '» — ' + fmtMoney(c.total) + '. Οι παραγγελίες θα σημειωθούν ως τακτοποιημένες. Συνέχεια;', function(){
+      var now = new Date().toISOString();
+      c.list.forEach(function(o){ updateOrder(o.id, {settled: true, settledAt: now}); });
+      setTimeout(function(){ renderCashDetail(); renderCashList(); }, 50);
+    }, {yesLabel:'Κλείσιμο ταμείου', danger:false});
+  });
+
+  function renderCustomerNameDatalist(){
+    var dl = document.getElementById('customerNameList');
+    dl.innerHTML = '';
+    customers.forEach(function(c){
+      var opt = document.createElement('option');
+      opt.value = c.name;
+      dl.appendChild(opt);
+    });
+  }
+
+  function renderCustomersList(){
+    var box = document.getElementById('customersList');
+    box.innerHTML = '';
+    var q = customerSearch.trim().toLowerCase();
+    var qDigits = normPhone(customerSearch);
+    var list = customers.filter(function(c){
+      if(!q) return true;
+      var inText = [c.name,c.address,c.notes].some(function(v){ return String(v||'').toLowerCase().indexOf(q) !== -1; });
+      var inPhone = qDigits.length >= 3 && normPhone(c.phone).indexOf(qDigits) !== -1;
+      return inText || inPhone;
+    }).sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'el'); });
+
+    if(list.length === 0){
+      box.innerHTML = '<p style="font-size:.82rem;color:var(--ink-muted);padding:8px 0;">'+(q ? 'Κανένα αποτέλεσμα.' : 'Δεν υπάρχουν ακόμη πελάτες. Προστίθενται αυτόματα και όταν καταχωρείς παραγγελία, ή πρόσθεσέ έναν παρακάτω.')+'</p>';
+      return;
+    }
+    var canEdit = role && role.type === 'admin';
+    list.forEach(function(c){
+      var row = document.createElement('div');
+      row.className = 'customer-row';
+      var html = '<span class="oi"><svg class="icon"><use href="#ico-user"/></svg></span>';
+      html += '<div class="cbody">';
+      html += '<div class="cname"></div>';
+      if(c.address) html += '<div class="cline caddr"><svg class="icon"><use href="#ico-pin"/></svg><span></span></div>';
+      if(c.phone) html += '<div class="cline cphone"><svg class="icon"><use href="#ico-phone"/></svg><span></span></div>';
+      if(c.notes) html += '<div class="cline cnotes"><span></span></div>';
+      html += '</div>';
+      if(canEdit){
+        html += '<div class="cactions"><button class="icon-btn cedit" title="Επεξεργασία"><svg class="icon"><use href="#ico-edit"/></svg></button><button class="icon-btn cdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button></div>';
+      }
+      row.innerHTML = html;
+      row.querySelector('.cname').textContent = c.name;
+      var a = row.querySelector('.caddr span'); if(a) a.textContent = c.address;
+      var p = row.querySelector('.cphone span'); if(p) p.textContent = c.phone;
+      var n = row.querySelector('.cnotes span'); if(n) n.textContent = c.notes;
+      var eb = row.querySelector('.cedit'); if(eb) eb.addEventListener('click', function(){ openCustomerForm(c); });
+      var db_ = row.querySelector('.cdel'); if(db_) db_.addEventListener('click', function(){
+        showConfirm('Διαγραφή του πελάτη «'+(c.name||'')+'»; (Οι υπάρχουσες παραγγελίες δεν επηρεάζονται.)', function(){ deleteCustomer(c.id); });
+      });
+      box.appendChild(row);
+    });
+  }
+
+  function renderAll(){
+    renderStats();
+    renderOrders();
+    renderCodeList();
+    renderCustomerNameDatalist();
+    updateRoleUI();
+    // keep the customers list live (e.g. right after a delete) while it's open
+    var custModal = document.getElementById('customersModalOverlay');
+    if(custModal && !custModal.hidden) renderCustomersList();
+  }
+
+  /* ---------------- modals ---------------- */
+  function openOrderModal(existing){
+    var overlay = document.getElementById('orderModalOverlay');
+    var form = document.getElementById('orderForm');
+    form.reset();
+    document.getElementById('custHint').hidden = true;
+    document.getElementById('phoneSuggest').hidden = true;
+    document.getElementById('f-id').value = existing ? existing.id : '';
+    document.getElementById('orderModalTitle').textContent = existing ? 'Επεξεργασία παραγγελίας' : 'Νέα παραγγελία';
+    renderDelivererFormSelect();
+    if(existing){
+      document.getElementById('f-customer').value = existing.customer || '';
+      document.getElementById('f-area').value = existing.area || 'ΠΟΛΗ';
+      document.getElementById('f-phone').value = existing.phone || '';
+      document.getElementById('f-address').value = existing.address || '';
+      document.getElementById('f-payment').value = existing.payment || '';
+      document.getElementById('f-deliverer').value = existing.deliverer || '';
+      document.getElementById('f-scheduled').value = existing.scheduledDate || '';
+      document.getElementById('f-notes').value = existing.notes || '';
+      resetItemsList(existing.items && existing.items.length ? existing.items : (existing.code || existing.qty || existing.amount ? [{code: existing.code, qty: existing.qty, amount: existing.amount}] : null));
+    } else {
+      document.getElementById('f-area').value = 'ΠΟΛΗ';
+      resetItemsList(null);
+    }
+    overlay.hidden = false;
+    setTimeout(function(){ document.getElementById('f-phone').focus(); }, 30);
+  }
+  function closeOrderModal(){ document.getElementById('orderModalOverlay').hidden = true; }
+
+  document.getElementById('newOrderFab').addEventListener('click', function(){ openOrderModal(null); });
+  document.getElementById('orderModalClose').addEventListener('click', closeOrderModal);
+  document.getElementById('orderCancelBtn').addEventListener('click', closeOrderModal);
+
+  document.getElementById('orderModalOverlay').addEventListener('click', function(e){ if(e.target === this) closeOrderModal(); });
+
+  // Replaces window.confirm(), which some embeds silently block (the click
+  // does nothing, with no error) — this in-page dialog always works.
+  var confirmDialogCallback = null;
+  function showConfirm(message, onYes, opts){
+    opts = opts || {};
+    confirmDialogCallback = onYes;
+    document.getElementById('confirmDialogMsg').textContent = message;
+    var yesBtn = document.getElementById('confirmDialogYes');
+    yesBtn.textContent = opts.yesLabel || 'Διαγραφή';
+    yesBtn.classList.toggle('btn-danger', opts.danger !== false);
+    document.getElementById('confirmDialogOverlay').hidden = false;
+  }
+  function closeConfirmDialog(){
+    document.getElementById('confirmDialogOverlay').hidden = true;
+    confirmDialogCallback = null;
+  }
+  document.getElementById('confirmDialogYes').addEventListener('click', function(){
+    var cb = confirmDialogCallback;
+    closeConfirmDialog();
+    if(cb) cb();
+  });
+  document.getElementById('confirmDialogCancel').addEventListener('click', closeConfirmDialog);
+  document.getElementById('confirmDialogOverlay').addEventListener('click', function(e){ if(e.target === this) closeConfirmDialog(); });
+
+  var pendingOrder = null; // {id, data} awaiting the new-customer confirmation
+
+  function finalizeOrderSave(id, data){
+    if(id){
+      updateOrder(id, data);
+    } else {
+      data.status = 'Σε εξέλιξη';
+      data.createdAt = new Date().toISOString();
+      data.createdBy = role.type === 'admin' ? 'Διοίκηση' : role.name;
+      createOrder(data);
+    }
+    closeOrderModal();
+  }
+
+  document.getElementById('orderForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var id = document.getElementById('f-id').value;
+    var items = collectItemsFromForm();
+    var totalAmount = items.reduce(function(s, it){ return s + (it.amount || 0); }, 0);
+    var totalQty = items.reduce(function(s, it){ return s + (it.qty || 0); }, 0);
+    var data = {
+      customer: document.getElementById('f-customer').value.trim(),
+      area: document.getElementById('f-area').value,
+      phone: document.getElementById('f-phone').value.trim(),
+      address: document.getElementById('f-address').value.trim(),
+      items: items,
+      code: items.length === 1 ? items[0].code : items.map(function(it){ return it.code; }).filter(Boolean).join(', '),
+      qty: totalQty || null,
+      amount: totalAmount || null,
+      payment: document.getElementById('f-payment').value,
+      deliverer: document.getElementById('f-deliverer').value,
+      scheduledDate: document.getElementById('f-scheduled').value || null,
+      notes: document.getElementById('f-notes').value.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    if(!data.customer){ return; }
+    items.forEach(function(it){ if(it.code) knownCodes.add(it.code); });
+
+    var existing = findCustomerByPhone(data.phone) || findCustomerByName(data.customer);
+    if(existing){
+      fillCustomerBlanks(existing, data);
+      finalizeOrderSave(id, data);
+      return;
+    }
+    // No match on phone or name: this looks like a brand-new customer,
+    // typed in by hand. Ask before adding them to the directory.
+    if(data.phone || data.address){
+      pendingOrder = {id: id, data: data};
+      var bits = [];
+      if(data.phone) bits.push('τηλ. ' + data.phone);
+      if(data.address) bits.push(data.address);
+      document.getElementById('confirmCustomerText').textContent =
+        'Δεν βρέθηκε στη βάση. Να καταχωρηθεί «' + data.customer + '» ως νέος πελάτης' +
+        (bits.length ? ' (' + bits.join(', ') + ')' : '') + ';';
+      document.getElementById('confirmCustomerOverlay').hidden = false;
+      return;
+    }
+    finalizeOrderSave(id, data);
+  });
+
+  document.getElementById('confirmCustomerYes').addEventListener('click', function(){
+    if(pendingOrder){
+      createCustomer({
+        name: pendingOrder.data.customer,
+        address: pendingOrder.data.address || '',
+        phone: pendingOrder.data.phone || '',
+        notes: '',
+        createdAt: new Date().toISOString()
+      });
+      finalizeOrderSave(pendingOrder.id, pendingOrder.data);
+      pendingOrder = null;
+    }
+    document.getElementById('confirmCustomerOverlay').hidden = true;
+  });
+  document.getElementById('confirmCustomerNo').addEventListener('click', function(){
+    if(pendingOrder){
+      finalizeOrderSave(pendingOrder.id, pendingOrder.data);
+      pendingOrder = null;
+    }
+    document.getElementById('confirmCustomerOverlay').hidden = true;
+  });
+
+  // phone is the primary lookup. From the 4th digit on, show every customer
+  // whose phone contains what's typed so far, so staff can pick the right
+  // one before finishing the number; an exact match auto-fills directly.
+  function applyCustomerMatch(match){
+    var nameEl = document.getElementById('f-customer');
+    var addrEl = document.getElementById('f-address');
+    var hint = document.getElementById('custHint');
+    nameEl.value = match.name || '';
+    if(match.address) addrEl.value = match.address;
+    var bits = [];
+    if(match.address) bits.push(match.address);
+    if(match.notes) bits.push('«' + match.notes + '»');
+    hint.textContent = 'Γνωστός πελάτης: ' + match.name + (bits.length ? ' — ' + bits.join(' · ') : '');
+    hint.hidden = false;
+  }
+
+  function renderPhoneSuggestions(matches, phoneEl){
+    var box = document.getElementById('phoneSuggest');
+    box.innerHTML = '';
+    matches.slice(0, 6).forEach(function(c){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      var metaBits = [];
+      if(c.address) metaBits.push(c.address);
+      btn.innerHTML = '<div class="ps-name"></div><div class="ps-meta"><span class="ps-phone"></span>' + (metaBits.length ? ' · <span class="ps-addr"></span>' : '') + '</div>';
+      btn.querySelector('.ps-name').textContent = c.name;
+      btn.querySelector('.ps-phone').textContent = c.phone || '';
+      var addrSpan = btn.querySelector('.ps-addr'); if(addrSpan) addrSpan.textContent = metaBits.join(' · ');
+      btn.addEventListener('click', function(){
+        phoneEl.value = c.phone || phoneEl.value;
+        applyCustomerMatch(c);
+        box.hidden = true;
+      });
+      box.appendChild(btn);
+    });
+    box.hidden = matches.length === 0;
+  }
+
+  document.getElementById('f-phone').addEventListener('input', function(){
+    var hint = document.getElementById('custHint');
+    var suggestBox = document.getElementById('phoneSuggest');
+    var qDigits = normPhone(this.value);
+
+    if(qDigits.length < 4){
+      hint.hidden = true;
+      suggestBox.hidden = true;
+      return;
+    }
+
+    var exact = findCustomerByPhone(this.value);
+    if(exact){
+      suggestBox.hidden = true;
+      applyCustomerMatch(exact);
+      return;
+    }
+
+    var candidates = customers.filter(function(c){ return normPhone(c.phone).indexOf(qDigits) !== -1; });
+    if(candidates.length){
+      hint.hidden = true;
+      renderPhoneSuggestions(candidates, this);
+    } else {
+      suggestBox.hidden = true;
+      hint.hidden = true;
+    }
+  });
+
+  // secondary convenience: typing a known name (e.g. phone not at hand)
+  // fills in phone/address too, as long as they're still blank.
+  document.getElementById('f-customer').addEventListener('input', function(){
+    var phoneEl = document.getElementById('f-phone');
+    if(phoneEl.value) return; // phone already drives the match
+    var hint = document.getElementById('custHint');
+    var match = findCustomerByName(this.value);
+    if(!match){ hint.hidden = true; return; }
+    var addrEl = document.getElementById('f-address');
+    if(match.phone) phoneEl.value = match.phone;
+    if(match.address && !addrEl.value) addrEl.value = match.address;
+    var bits = [];
+    if(match.address) bits.push(match.address);
+    if(match.notes) bits.push('«' + match.notes + '»');
+    hint.textContent = 'Γνωστός πελάτης' + (bits.length ? ' — ' + bits.join(' · ') : '');
+    hint.hidden = !bits.length && !match.phone;
+  });
+
+  // customers modal
+  function openCustomersModal(){
+    renderCustomersList();
+    document.getElementById('customersModalOverlay').hidden = false;
+  }
+  function openCustomerForm(existing){
+    var form = document.getElementById('customerForm');
+    form.reset();
+    document.getElementById('fc-id').value = existing ? existing.id : '';
+    document.getElementById('customerFormTitle').textContent = existing ? 'Επεξεργασία πελάτη' : 'Νέος πελάτης';
+    if(existing){
+      document.getElementById('fc-name').value = existing.name || '';
+      document.getElementById('fc-address').value = existing.address || '';
+      document.getElementById('fc-phone').value = existing.phone || '';
+      document.getElementById('fc-notes').value = existing.notes || '';
+    }
+    document.getElementById('customerFormOverlay').hidden = false;
+    setTimeout(function(){ document.getElementById('fc-name').focus(); }, 30);
+  }
+  document.getElementById('customersBtn').addEventListener('click', openCustomersModal);
+  document.getElementById('customersModalClose').addEventListener('click', function(){ document.getElementById('customersModalOverlay').hidden = true; });
+  document.getElementById('customersModalOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('newCustomerBtn').addEventListener('click', function(){ openCustomerForm(null); });
+
+  var custSearchTimer;
+  document.getElementById('customerSearchInput').addEventListener('input', function(e){
+    clearTimeout(custSearchTimer);
+    var v = e.target.value;
+    custSearchTimer = setTimeout(function(){ customerSearch = v; renderCustomersList(); }, 150);
+  });
+
+  document.getElementById('customerFormClose').addEventListener('click', function(){ document.getElementById('customerFormOverlay').hidden = true; });
+  document.getElementById('customerFormCancel').addEventListener('click', function(){ document.getElementById('customerFormOverlay').hidden = true; });
+  document.getElementById('customerFormOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('customerForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var id = document.getElementById('fc-id').value;
+    var data = {
+      name: document.getElementById('fc-name').value.trim(),
+      address: document.getElementById('fc-address').value.trim(),
+      phone: document.getElementById('fc-phone').value.trim(),
+      notes: document.getElementById('fc-notes').value.trim(),
+      updatedAt: new Date().toISOString()
+    };
+    if(!data.name) return;
+    if(id){
+      updateCustomer(id, data);
+    } else {
+      data.createdAt = new Date().toISOString();
+      createCustomer(data);
+    }
+    document.getElementById('customerFormOverlay').hidden = true;
+    renderCustomersList();
+  });
+
+  // roster modal
+  document.getElementById('rosterBtn').addEventListener('click', function(){
+    renderRoster();
+    document.getElementById('rosterModalOverlay').hidden = false;
+  });
+  document.getElementById('rosterModalClose').addEventListener('click', function(){ document.getElementById('rosterModalOverlay').hidden = true; });
+  document.getElementById('rosterModalOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('rosterForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = document.getElementById('r-name').value.trim();
+    var type = document.getElementById('r-type').value;
+    if(!name) return;
+    createDeliverer({name:name, type:type, active:true, color:nextPaletteColor(), createdAt:new Date().toISOString()});
+    document.getElementById('r-name').value = '';
+    renderRoster();
+  });
+
+  // role badge / overlay
+  document.getElementById('roleBadge').addEventListener('click', function(){
+    renderRoleOverlay();
+    document.getElementById('roleOverlay').hidden = false;
+  });
+  document.querySelector('[data-role-admin]').addEventListener('click', function(){
+    saveRole({type:'admin'});
+    document.getElementById('roleOverlay').hidden = true;
+  });
+
+  // tabs
+  document.getElementById('sectionTabs').addEventListener('click', function(e){
+    var btn = e.target.closest('.tab');
+    if(!btn) return;
+    document.querySelectorAll('#sectionTabs .tab').forEach(function(t){ t.setAttribute('aria-selected', t===btn ? 'true':'false'); });
+    filters.section = btn.dataset.section;
+    renderOrders();
+  });
+
+  // area chips
+  document.getElementById('areaChips').addEventListener('click', function(e){
+    var btn = e.target.closest('.chip');
+    if(!btn) return;
+    document.querySelectorAll('#areaChips .chip').forEach(function(c){ c.setAttribute('aria-pressed', c===btn ? 'true':'false'); });
+    filters.area = btn.dataset.area;
+    renderAll();
+  });
+
+  // mine toggle
+  document.getElementById('mineToggle').addEventListener('click', function(){
+    filters.mineOnly = !filters.mineOnly;
+    this.setAttribute('aria-pressed', String(filters.mineOnly));
+    renderOrders();
+  });
+
+  // search
+  var searchTimer;
+  document.getElementById('searchInput').addEventListener('input', function(e){
+    clearTimeout(searchTimer);
+    var v = e.target.value;
+    searchTimer = setTimeout(function(){ filters.search = v; renderOrders(); }, 150);
+  });
+
+  /* ---------------- boot ---------------- */
+  // Surface database problems instead of failing silently (e.g. Firestore
+  // security rules that don't (yet) cover a collection show up here as
+  // "Missing or insufficient permissions" instead of just... nothing
+  // happening when someone taps a button).
+  function showDbError(err){
+    console.error(err);
+    var banner = document.getElementById('dbErrorBanner');
+    if(!banner) return;
+    var msg = (err && err.message) ? err.message : String(err);
+    banner.textContent = 'Σφάλμα βάσης δεδομένων: ' + msg + ' — αν επιμένει, έλεγξε τους κανόνες ασφαλείας (Firestore Rules) στην κονσόλα του Firebase.';
+    banner.hidden = false;
+  }
+  window.addEventListener('unhandledrejection', function(e){ showDbError(e.reason); });
+
+  function attachOrdersListener(){
+    ordersCol().orderBy('createdAt','desc').limit(500).onSnapshot(function(snap){
+      orders = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      orders.forEach(function(o){
+        if(o.items && o.items.length){ o.items.forEach(function(it){ if(it.code) knownCodes.add(it.code); }); }
+        else if(o.code) knownCodes.add(o.code);
+      });
+      renderAll();
+    }, showDbError);
+  }
+  function attachDeliverersListener(){
+    deliverersCol().orderBy('name','asc').onSnapshot(function(snap){
+      deliverers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderAll();
+      if(role && role.type === 'driver'){
+        // keep locally-stored role name in sync if renamed elsewhere is out of scope; no-op.
+      }
+    }, showDbError);
+  }
+  function attachCustomersListener(){
+    customersCol().orderBy('name','asc').limit(1000).onSnapshot(function(snap){
+      customers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderAll();
+    }, showDbError);
+  }
+
+  function initFirebase(){
+    if(typeof firebase === 'undefined' || !FIREBASE_CONFIG.projectId) return null;
+    try{
+      if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+      return firebase.firestore();
+    }catch(e){
+      console.error('firebase init failed', e);
+      return null;
+    }
+  }
+
+  function boot(){
+    loadRole();
+    updateRoleUI();
+    if(!role){
+      renderRoleOverlay();
+      document.getElementById('roleOverlay').hidden = false;
+    }
+    renderAll();
+
+    var fsDb = initFirebase();
+    if(fsDb){
+      db = fsDb;
+      attachOrdersListener();
+      attachDeliverersListener();
+      attachCustomersListener();
+      return;
+    }
+
+    if(window.claude && typeof window.claude.use === 'function'){
+      window.claude.use('db').then(function(namespace){
+        if(!namespace){
+          offline = true;
+          document.getElementById('offlineBanner').hidden = false;
+          renderAll();
+          return;
+        }
+        db = namespace;
+        attachOrdersListener();
+        attachDeliverersListener();
+        attachCustomersListener();
+      }).catch(function(){
+        offline = true;
+        document.getElementById('offlineBanner').hidden = false;
+        renderAll();
+      });
+    } else {
+      offline = true;
+      document.getElementById('offlineBanner').hidden = false;
+      renderAll();
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+
+</body>
+</html>
