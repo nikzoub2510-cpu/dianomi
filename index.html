@@ -844,6 +844,10 @@
           <input id="fc-phone" type="tel" autocomplete="off">
         </div>
         <div class="field">
+          <label for="fc-phone2">Τηλέφωνο 2</label>
+          <input id="fc-phone2" type="tel" autocomplete="off">
+        </div>
+        <div class="field span2">
           <label for="fc-floor">Όροφος</label>
           <input id="fc-floor" autocomplete="off" placeholder="π.χ. 2ος">
         </div>
@@ -1243,7 +1247,7 @@
   function findCustomerByPhone(phone){
     var qd = normPhone(phone);
     if(qd.length < 8) return null;
-    return customers.find(function(c){ return normPhone(c.phone) === qd; }) || null;
+    return customers.find(function(c){ return normPhone(c.phone) === qd || normPhone(c.phone2) === qd; }) || null;
   }
   /** Fill blanks on an already-known customer; never overwrites details
    *  staff already recorded. */
@@ -1602,7 +1606,7 @@
         var inCustPhone = false;
         if(!inName && !inPhone && qDigits.length >= 3){
           var cust = findCustomerByName(o.customer);
-          if(cust) inCustPhone = normPhone(cust.phone).indexOf(qDigits) !== -1;
+          if(cust) inCustPhone = normPhone(cust.phone).indexOf(qDigits) !== -1 || normPhone(cust.phone2).indexOf(qDigits) !== -1;
         }
         if(!inName && !inPhone && !inCustPhone) return false;
       }
@@ -2368,7 +2372,7 @@
     var list = customers.filter(function(c){
       if(!q) return true;
       var inText = [c.name,c.address,c.floor,c.notes].some(function(v){ return String(v||'').toLowerCase().indexOf(q) !== -1; });
-      var inPhone = qDigits.length >= 3 && normPhone(c.phone).indexOf(qDigits) !== -1;
+      var inPhone = qDigits.length >= 3 && (normPhone(c.phone).indexOf(qDigits) !== -1 || normPhone(c.phone2).indexOf(qDigits) !== -1);
       return inText || inPhone;
     }).sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'el'); });
 
@@ -2385,6 +2389,7 @@
       html += '<div class="cname"></div>';
       if(c.address || c.floor) html += '<div class="cline caddr"><svg class="icon"><use href="#ico-pin"/></svg><span></span></div>';
       if(c.phone) html += '<div class="cline cphone"><svg class="icon"><use href="#ico-phone"/></svg><span></span></div>';
+      if(c.phone2) html += '<div class="cline cphone2"><svg class="icon"><use href="#ico-phone"/></svg><span></span></div>';
       if(c.notes) html += '<div class="cline cnotes"><span></span></div>';
       html += '</div>';
       if(canEdit){
@@ -2394,6 +2399,7 @@
       row.querySelector('.cname').textContent = c.name;
       var a = row.querySelector('.caddr span'); if(a) a.textContent = [c.address, c.floor].filter(Boolean).join(' — ');
       var p = row.querySelector('.cphone span'); if(p) p.textContent = c.phone;
+      var p2 = row.querySelector('.cphone2 span'); if(p2) p2.textContent = c.phone2 + ' (2ο)';
       var n = row.querySelector('.cnotes span'); if(n) n.textContent = c.notes;
       var eb = row.querySelector('.cedit'); if(eb) eb.addEventListener('click', function(){ openCustomerForm(c); });
       var db_ = row.querySelector('.cdel'); if(db_) db_.addEventListener('click', function(){
@@ -2684,6 +2690,7 @@
       var metaBits = [];
       if(c.address) metaBits.push(c.address);
       if(c.floor) metaBits.push(c.floor);
+      if(c.phone2) metaBits.push('2ο: ' + c.phone2);
       btn.innerHTML = '<div class="ps-name"></div><div class="ps-meta"><span class="ps-phone"></span>' + (metaBits.length ? ' · <span class="ps-addr"></span>' : '') + '</div>';
       btn.querySelector('.ps-name').textContent = c.name;
       btn.querySelector('.ps-phone').textContent = c.phone || '';
@@ -2729,7 +2736,7 @@
     var candidates = [];
     if(qDigits.length >= 3){
       customers.forEach(function(c){
-        if(!seen[c.id] && normPhone(c.phone).indexOf(qDigits) !== -1){ seen[c.id] = true; candidates.push(c); }
+        if(!seen[c.id] && (normPhone(c.phone).indexOf(qDigits) !== -1 || normPhone(c.phone2).indexOf(qDigits) !== -1)){ seen[c.id] = true; candidates.push(c); }
       });
     }
     if(qText.length >= 2){
@@ -2815,6 +2822,7 @@
       document.getElementById('fc-name').value = existing.name || '';
       document.getElementById('fc-address').value = existing.address || '';
       document.getElementById('fc-phone').value = existing.phone || '';
+      document.getElementById('fc-phone2').value = existing.phone2 || '';
       document.getElementById('fc-floor').value = existing.floor || '';
       document.getElementById('fc-notes').value = existing.notes || '';
     }
@@ -2843,6 +2851,7 @@
       name: document.getElementById('fc-name').value.trim(),
       address: document.getElementById('fc-address').value.trim(),
       phone: document.getElementById('fc-phone').value.trim(),
+      phone2: document.getElementById('fc-phone2').value.trim(),
       floor: document.getElementById('fc-floor').value.trim(),
       notes: document.getElementById('fc-notes').value.trim(),
       updatedAt: new Date().toISOString()
