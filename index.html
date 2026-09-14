@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body><title>ZGAS Διανομή</title>
+<body>
+<title>ZGAS Διανομή</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=PT+Sans+Narrow:wght@400;700&display=swap">
@@ -399,8 +400,7 @@
   }
   .item-row-fields .item-remove:hover{ color:var(--st-cancel-fg); border-color:var(--st-cancel-fg); }
   .item-quick{ display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
-  .item-qty-quick{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
-  .item-quick button, .item-qty-quick button{
+  .item-quick button{
     padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2);
     color:var(--ink-muted); font-size:.72rem; font-weight:600; font-family:var(--font-mono); cursor:pointer;
   }
@@ -469,6 +469,17 @@
   .add-roster{ display:flex; gap:8px; margin-top:12px; }
   .add-roster input{ flex:1; }
   .add-roster select{ width:120px; }
+  .product-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .product-row:last-child{ border-bottom:none; }
+  .product-row .oi{ width:30px; height:30px; border-radius:8px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-muted); flex:none; }
+  .product-row .name{ flex:1; min-width:80px; font-weight:600; font-size:.875rem; }
+  .product-row .price-field{ display:flex; align-items:center; gap:3px; flex:none; }
+  .product-row .price-field input{ width:74px; text-align:right; font-family:var(--font-mono); }
+  .product-row .price-field span{ font-size:.78rem; color:var(--ink-faint); }
+  .product-row .pdel{ flex:none; }
+  .add-product{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; }
+  .add-product input.p-name{ flex:1; min-width:120px; }
+  .add-product input.p-price{ width:100px; font-family:var(--font-mono); }
 
   .customer-row{ display:flex; align-items:flex-start; gap:10px; padding:11px 0; border-bottom:1px solid var(--border); }
   .customer-row:last-child{ border-bottom:none; }
@@ -577,6 +588,7 @@
     <symbol id="ico-cash" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="19" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5c1.6 0 2.5-1 2.5-2.5M21.5 9.5c-1.6 0-2.5-1-2.5-2.5M2.5 14.5c1.6 0 2.5 1 2.5 2.5M21.5 14.5c-1.6 0-2.5 1-2.5 2.5"/></symbol>
     <symbol id="ico-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5"/><path d="M4 18v1.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V18"/></symbol>
     <symbol id="ico-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 3.8 1.2 5.3 2 6.3.3.4 0 1.1-.6 1.1H4.6c-.6 0-.9-.7-.6-1.1.8-1 2-2.5 2-6.3z"/><path d="M9.3 19a2.7 2.7 0 0 0 5.4 0"/></symbol>
+    <symbol id="ico-tag" viewBox="0 0 24 24"><path d="M12.6 3.4l7 7a2 2 0 0 1 0 2.8l-6.4 6.4a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 3 11V4.5A1.5 1.5 0 0 1 4.5 3H11a2 2 0 0 1 1.6.4z"/><circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/></symbol>
   </defs>
 </svg>
 
@@ -595,6 +607,7 @@
     <button id="cashBtn" class="icon-btn" title="Ταμείο"><svg class="icon"><use href="#ico-cash"/></svg></button>
     <button id="customersBtn" class="icon-btn" title="Πελάτες"><svg class="icon"><use href="#ico-contacts"/></svg></button>
     <button id="rosterBtn" class="icon-btn" title="Διανομείς &amp; οχήματα" hidden><svg class="icon"><use href="#ico-settings"/></svg></button>
+    <button id="productsBtn" class="icon-btn" title="Προϊόντα &amp; τιμές" hidden><svg class="icon"><use href="#ico-tag"/></svg></button>
     <button id="backupBtn" class="icon-btn" title="Backup σε Excel" hidden><svg class="icon"><use href="#ico-download"/></svg></button>
     <button id="pushBtn" class="icon-btn" title="Ειδοποιήσεις" hidden><svg class="icon"><use href="#ico-bell"/></svg></button>
     <button id="roleBadge" class="role-badge" title="Αλλαγή χρήστη">
@@ -863,6 +876,23 @@
   </div>
 </div>
 
+<!-- hot products & prices -->
+<div class="modal-overlay" id="productsModalOverlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Προϊόντα &amp; τιμές</h2>
+      <button class="icon-btn" id="productsModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Τα ενεργά προϊόντα εμφανίζονται ως γρήγορες επιλογές σε κάθε γραμμή είδους στις παραγγελίες — με τιμή ανά τεμάχιο, το ποσό υπολογίζεται αυτόματα (τιμή × ποσότητα).</p>
+    <div id="productsList"></div>
+    <form class="add-product" id="productsForm">
+      <input class="p-name" id="p-name" placeholder="Προϊόν (π.χ. Φιάλη 10κ)" required>
+      <input class="p-price" id="p-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Τιμή €">
+      <button class="btn btn-primary" type="submit">Προσθήκη</button>
+    </form>
+  </div>
+</div>
+
 <!-- backup to excel -->
 <div class="modal-overlay" id="backupModalOverlay" hidden>
   <div class="modal" style="max-width:380px;">
@@ -934,7 +964,6 @@
   };
 
   /* ---------------- constants ---------------- */
-  var HOT_CODES = ['0010', '0010Π', '0025Π'];
   var DELIVERER_PALETTE = ['#3B82F6','#8B5CF6','#14B8A6','#EC4899','#6366F1','#0EA5A6','#B4530A','#64748B','#D6409F','#2F855A'];
   var AREA_META = {
     'ΠΟΛΗ':   {label:'Πόλη',   icon:'ico-city'},
@@ -972,6 +1001,7 @@
   var orders = [];      // {id, ...fields}
   var deliverers = [];  // {id, name, type, active}
   var customers = [];   // {id, name, address, phone, notes}
+  var products = [];    // {id, name, price, active} — admin-defined "hot" quick-pick products for order items
   var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
   var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
@@ -1089,6 +1119,7 @@
   function ordersCol(){ return db.collection('orders'); }
   function deliverersCol(){ return db.collection('deliverers'); }
   function customersCol(){ return db.collection('customers'); }
+  function productsCol(){ return db.collection('products'); }
 
   function createOrder(data){
     if(offline){
@@ -1143,6 +1174,37 @@
       return Promise.resolve();
     }
     return db.doc('deliverers/'+id).update(patch);
+  }
+  function createProduct(data){
+    if(offline){
+      var p = Object.assign({id:uid()}, data);
+      products.push(p);
+      renderAll();
+      return Promise.resolve();
+    }
+    return productsCol().add(data);
+  }
+  function updateProduct(id, patch){
+    if(offline){
+      var p = products.find(function(x){ return x.id===id; });
+      if(p) Object.assign(p, patch);
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('products/'+id).update(patch);
+  }
+  function deleteProduct(id){
+    if(offline){
+      products = products.filter(function(x){ return x.id!==id; });
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('products/'+id).delete();
+  }
+  /** Products currently shown as quick-picks on order item rows. */
+  function activeProducts(){
+    return products.filter(function(p){ return p.active !== false; })
+      .sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'el'); });
   }
   function createCustomer(data){
     if(offline){
@@ -1468,6 +1530,7 @@
   function updateRoleUI(){
     var badgeText = document.getElementById('roleBadgeText');
     var rosterBtn = document.getElementById('rosterBtn');
+    var productsBtn = document.getElementById('productsBtn');
     var backupBtn = document.getElementById('backupBtn');
     var pushBtn = document.getElementById('pushBtn');
     var mineToggle = document.getElementById('mineToggle');
@@ -1475,6 +1538,7 @@
     if(!role){
       badgeText.textContent = 'Επιλογή…';
       rosterBtn.hidden = true;
+      productsBtn.hidden = true;
       backupBtn.hidden = true;
       pushBtn.hidden = true;
       mineToggle.hidden = true;
@@ -1484,6 +1548,7 @@
     if(role.type === 'admin'){
       badgeText.textContent = 'Διοίκηση';
       rosterBtn.hidden = false;
+      productsBtn.hidden = false;
       backupBtn.hidden = false;
       pushBtn.hidden = true;
       mineToggle.hidden = true;
@@ -1492,6 +1557,7 @@
     } else {
       badgeText.textContent = role.name;
       rosterBtn.hidden = true;
+      productsBtn.hidden = true;
       backupBtn.hidden = true;
       pushBtn.hidden = false;
       mineToggle.hidden = false;
@@ -1962,49 +2028,79 @@
         '<input class="item-amount" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Ποσό €">' +
         '<button type="button" class="item-remove" tabindex="-1" title="Αφαίρεση γραμμής">&times;</button>' +
       '</div>' +
-      '<div class="item-quick"></div>' +
-      '<div class="item-qty-quick"></div>';
+      '<div class="item-quick"></div>';
 
     var codeInput = row.querySelector('.item-code');
     var qtyInput = row.querySelector('.item-qty');
     var amountInput = row.querySelector('.item-amount');
     var quickBox = row.querySelector('.item-quick');
-    var qtyQuickBox = row.querySelector('.item-qty-quick');
 
     codeInput.value = item.code || '';
     qtyInput.value = item.qty || '';
     amountInput.value = (item.amount === 0 || item.amount) ? item.amount : '';
 
-    function syncQuickPressed(){
-      Array.from(quickBox.children).forEach(function(b){ b.setAttribute('aria-pressed', String(b.textContent === codeInput.value)); });
+    // When a quick product button is clicked, the row is "linked" to that
+    // product's price: the amount recomputes automatically as price × qty
+    // whenever the quantity changes. Typing directly into the amount field,
+    // editing the code away from that product's name, or re-clicking the
+    // same button all break the link and fall back to fully manual entry
+    // (e.g. for discounts or one-off amounts) — same override behavior the
+    // amount field already always allowed.
+    function breakLink(){
+      delete row.dataset.linkedName;
+      delete row.dataset.linkedPrice;
     }
-    HOT_CODES.forEach(function(code){
+    function computeLinkedAmount(){
+      if(row.dataset.linkedPrice === undefined) return;
+      var price = Number(row.dataset.linkedPrice);
+      var qty = Number(qtyInput.value) || 0;
+      amountInput.value = qty ? String(Math.round(price * qty * 100) / 100) : '';
+      recomputeItemsTotal();
+    }
+    function syncQuickPressed(){
+      Array.from(quickBox.children).forEach(function(b){
+        b.setAttribute('aria-pressed', String(b.dataset.pname === codeInput.value && row.dataset.linkedName === b.dataset.pname));
+      });
+    }
+    activeProducts().forEach(function(p){
       var btn = document.createElement('button');
       btn.type = 'button';
       btn.tabIndex = -1;
-      btn.textContent = code;
+      btn.textContent = p.name;
+      btn.dataset.pname = p.name;
+      if(p.price || p.price === 0) btn.title = 'Τιμή: ' + fmtMoney(p.price);
       btn.addEventListener('click', function(){
-        codeInput.value = (codeInput.value === code) ? '' : code;
+        if(row.dataset.linkedName === p.name){
+          codeInput.value = '';
+          breakLink();
+        } else {
+          codeInput.value = p.name;
+          if(p.price || p.price === 0){
+            row.dataset.linkedName = p.name;
+            row.dataset.linkedPrice = p.price;
+            computeLinkedAmount();
+          } else {
+            breakLink();
+          }
+        }
         syncQuickPressed();
       });
       quickBox.appendChild(btn);
     });
     syncQuickPressed();
-    codeInput.addEventListener('input', syncQuickPressed);
-
-    [1, 2, 5].forEach(function(n){
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.tabIndex = -1;
-      btn.textContent = String(n);
-      btn.addEventListener('click', function(){
-        qtyInput.value = (parseInt(qtyInput.value, 10) || 0) + n;
-        qtyInput.focus();
-      });
-      qtyQuickBox.appendChild(btn);
+    codeInput.addEventListener('input', function(){
+      if(row.dataset.linkedName !== undefined && codeInput.value !== row.dataset.linkedName) breakLink();
+      syncQuickPressed();
     });
+    qtyInput.addEventListener('input', computeLinkedAmount);
 
-    amountInput.addEventListener('input', recomputeItemsTotal);
+    amountInput.addEventListener('input', function(){
+      // Fires only for a real keystroke — computeLinkedAmount() sets
+      // .value directly, which does not dispatch an 'input' event — so
+      // this is exactly a manual override and should break the link.
+      breakLink();
+      recomputeItemsTotal();
+    });
     row.querySelector('.item-remove').addEventListener('click', function(){
       if(list.children.length > 1){
         row.remove();
@@ -2107,6 +2203,42 @@
       });
       row.querySelector('.cash-btn').addEventListener('click', function(){
         openCashTill(d.name);
+      });
+      box.appendChild(row);
+    });
+  }
+
+  function renderProducts(){
+    var box = document.getElementById('productsList');
+    box.innerHTML = '';
+    if(products.length === 0){
+      box.innerHTML = '<p style="font-size:.82rem;color:var(--ink-muted);">Δεν υπάρχουν ακόμη προϊόντα. Πρόσθεσε το πρώτο παρακάτω.</p>';
+      return;
+    }
+    var list = products.slice().sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||''),'el'); });
+    list.forEach(function(p){
+      var row = document.createElement('div');
+      row.className = 'product-row';
+      row.innerHTML =
+        '<span class="oi"><svg class="icon"><use href="#ico-tag"/></svg></span>' +
+        '<span class="name"></span>' +
+        '<span class="price-field"><input type="number" class="p-price-input" min="0" step="0.01" inputmode="decimal" placeholder="Τιμή"><span>€</span></span>' +
+        '<button class="switch" role="switch" title="Ενεργό/η"></button>' +
+        '<button class="icon-btn pdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
+      row.querySelector('.name').textContent = p.name;
+      var priceInput = row.querySelector('.p-price-input');
+      priceInput.value = (p.price === 0 || p.price) ? p.price : '';
+      priceInput.addEventListener('change', function(){
+        var v = priceInput.value ? Number(priceInput.value) : null;
+        updateProduct(p.id, {price: v});
+      });
+      var sw = row.querySelector('.switch');
+      sw.setAttribute('aria-checked', String(p.active !== false));
+      sw.addEventListener('click', function(){
+        updateProduct(p.id, {active: p.active === false});
+      });
+      row.querySelector('.pdel').addEventListener('click', function(){
+        showConfirm('Διαγραφή του προϊόντος «'+(p.name||'')+'»; (Δεν επηρεάζει υπάρχουσες παραγγελίες.)', function(){ deleteProduct(p.id); });
       });
       box.appendChild(row);
     });
@@ -2285,6 +2417,8 @@
     // screen never reflects it until the modal is closed and reopened.
     var rosterModal = document.getElementById('rosterModalOverlay');
     if(rosterModal && !rosterModal.hidden) renderRoster();
+    var productsModal = document.getElementById('productsModalOverlay');
+    if(productsModal && !productsModal.hidden) renderProducts();
   }
 
   /* ---------------- modals ---------------- */
@@ -2401,6 +2535,7 @@
       {id: 'customerFormOverlay', action: function(){ document.getElementById('customerFormOverlay').hidden = true; }},
       {id: 'customersModalOverlay', action: function(){ document.getElementById('customersModalOverlay').hidden = true; }},
       {id: 'rosterModalOverlay', action: function(){ document.getElementById('rosterModalOverlay').hidden = true; }},
+      {id: 'productsModalOverlay', action: function(){ document.getElementById('productsModalOverlay').hidden = true; }},
       {id: 'backupModalOverlay', action: function(){ document.getElementById('backupModalOverlay').hidden = true; }},
       {id: 'cashDetailOverlay', action: function(){ document.getElementById('cashDetailOverlay').hidden = true; }},
       {id: 'cashModalOverlay', action: function(){ document.getElementById('cashModalOverlay').hidden = true; }},
@@ -2740,6 +2875,24 @@
     renderRoster();
   });
 
+  // products (hot picks & prices) modal
+  document.getElementById('productsBtn').addEventListener('click', function(){
+    renderProducts();
+    document.getElementById('productsModalOverlay').hidden = false;
+  });
+  document.getElementById('productsModalClose').addEventListener('click', function(){ document.getElementById('productsModalOverlay').hidden = true; });
+  document.getElementById('productsModalOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('productsForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var name = document.getElementById('p-name').value.trim();
+    var priceRaw = document.getElementById('p-price').value;
+    if(!name) return;
+    createProduct({name:name, price: priceRaw ? Number(priceRaw) : null, active:true, createdAt:new Date().toISOString()});
+    document.getElementById('p-name').value = '';
+    document.getElementById('p-price').value = '';
+    renderProducts();
+  });
+
   // backup to excel
   function updateBackupCountHint(){
     var dayStr = document.getElementById('backupDateInput').value;
@@ -2917,6 +3070,12 @@
       renderAll();
     }, showDbError);
   }
+  function attachProductsListener(){
+    productsCol().orderBy('name','asc').onSnapshot(function(snap){
+      products = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderAll();
+    }, showDbError);
+  }
 
   function initFirebase(){
     if(typeof firebase === 'undefined' || !FIREBASE_CONFIG.projectId) return null;
@@ -2956,6 +3115,7 @@
       attachOrdersListener();
       attachDeliverersListener();
       attachCustomersListener();
+      attachProductsListener();
       return;
     }
 
@@ -2971,6 +3131,7 @@
         attachOrdersListener();
         attachDeliverersListener();
         attachCustomersListener();
+        attachProductsListener();
       }).catch(function(){
         offline = true;
         document.getElementById('offlineBanner').hidden = false;
