@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
-<body>
-<title>ZGAS Διανομή</title>
+<body><title>ZGAS Διανομή</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=PT+Sans+Narrow:wght@400;700&display=swap">
@@ -118,15 +117,19 @@
   a{ color:inherit; }
 
   /* ---------- layout shell ---------- */
-  .wrap{ max-width:1080px; margin:0 auto; padding:0 16px 96px; }
+  .wrap{ padding:0 24px 96px; }
 
   header.topbar{
     position:sticky; top:0; z-index:20;
     background:var(--surface); border-bottom:1px solid var(--border);
   }
   .topbar-inner{
-    max-width:1080px; margin:0 auto; padding:12px 16px;
+    padding:12px 24px;
     display:flex; align-items:center; gap:12px;
+  }
+  @media (max-width:680px){
+    .wrap{ padding:0 16px 96px; }
+    .topbar-inner{ padding:12px 16px; }
   }
   .brand{ display:flex; align-items:center; gap:8px; flex:1; min-width:0; }
   .brand-mark{ width:32px; height:32px; flex:none; border-radius:8px; object-fit:cover; display:block; box-shadow:0 0 0 1px rgba(0,0,0,.08); }
@@ -148,6 +151,7 @@
     background:var(--surface); color:var(--ink-muted); cursor:pointer; flex:none;
   }
   .icon-btn:hover{ color:var(--ink); background:var(--surface-2); }
+  .icon-btn.active{ color:var(--accent-strong); background:var(--accent-soft); border-color:var(--accent); }
 
   /* ---------- stat strip (compact, single line) ---------- */
   .stats{ display:flex; flex-wrap:wrap; align-items:baseline; gap:5px 20px; margin:10px 0 8px; }
@@ -182,6 +186,14 @@
     font-size:.74rem; cursor:pointer; font-weight:500; white-space:nowrap;
   }
   .chip[aria-pressed="true"]{ background:var(--steel); border-color:var(--steel); color:var(--steel-ink); }
+  .chip.drop-target{ outline:2px dashed var(--accent); outline-offset:1px; background:var(--accent-soft); color:var(--accent-strong); }
+  .deliverer-filter-select{
+    -webkit-appearance:none; appearance:none; display:inline-flex; align-items:center;
+    padding:4px 22px 4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface);
+    color:var(--ink-muted); font-size:.74rem; cursor:pointer; font-weight:500; white-space:nowrap; font-family:inherit;
+    background-repeat:no-repeat; background-position:right 8px center; background-size:8px;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23888' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
   .search-box{ flex:1 1 150px; max-width:220px; min-width:120px; position:relative; }
   .search-box input{
     width:100%; padding:5px 10px 5px 28px; border-radius:999px; border:1px solid var(--border);
@@ -189,33 +201,90 @@
   }
   .search-box svg{ position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--ink-faint); width:.85em; height:.85em; }
 
-  /* ---------- order list & rows ---------- */
-  .order-grid{ display:flex; flex-direction:column; }
-  .order-row{
-    background:var(--surface); border:1px solid var(--border); border-left-width:3px;
-    border-radius:8px; padding:7px 10px; margin-bottom:5px; display:flex; flex-direction:column; gap:1px;
+  /* ---------- order list & rows ----------
+     #orderGrid is ONE shared CSS grid: every order contributes the same
+     fixed sequence of cells (time, customer, area, items, amount, payment,
+     address, status, deliverer, actions) into the same column tracks, so
+     every field lines up — and is centered — with the matching field on
+     the row above and below it, exactly like a spreadsheet. Each order's
+     wrapping <div class="order-row"> is display:contents so it disappears
+     from the box tree and its cells become direct grid children. */
+  .order-grid{
+    display:grid;
+    grid-template-columns: 76px 150px 60px 200px 90px 110px 220px 130px 140px 96px;
+    column-gap:10px; row-gap:0;
+    /* top-align (not center) so a row with many wrapped items — tall — doesn't
+       leave its other fields (customer, amount, status, ...) floating in the
+       middle of empty space; every .cell shares the same 7px top padding, so
+       they still all start at the same height within a normal, single-line
+       row and look exactly as before. */
+    align-items:start;
+    background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:2px 14px;
   }
-  .order-row:hover{ border-color:var(--ink-faint); }
+  .order-row{ display:contents; }
+  .order-row.dragging .cell{ opacity:.45; }
+  .cell{ min-width:0; overflow:hidden; text-overflow:ellipsis; padding:7px 0; }
+  .cell-customer[draggable="true"]{ cursor:grab; }
 
-  /* one compact line: identity + items + payment + status/deliverer + actions */
-  .row-main{ display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
-  .row-main .customer{
-    font-weight:700; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:32vw;
+  .cell-time{ font-size:.7rem; color:var(--ink-faint); white-space:nowrap; text-align:left; }
+  .cell-customer{
+    font-weight:700; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    text-align:left;
   }
-  .row-main .area-mini{ display:flex; align-items:center; gap:3px; font-size:.68rem; color:var(--ink-muted); flex:none; }
-  .row-main .area-mini svg{ width:.85em; height:.85em; }
-  .row-main .items-summary{
-    font-family:var(--font-mono); font-size:.74rem; color:var(--ink-muted); font-variant-numeric:tabular-nums; white-space:nowrap;
+  .cell-area{
+    display:flex; align-items:center; justify-content:flex-start; gap:3px; font-size:.68rem; color:var(--ink-muted);
+    white-space:nowrap;
   }
-  .row-spacer{ flex:1 1 6px; min-width:6px; }
+  .cell-area svg{ width:.85em; height:.85em; }
+  /* items & quantities: fixed-width code/qty sub-columns so quantities line
+     up vertically across every row, and bold/high-contrast so they're easy
+     to read at a glance */
+  .cell-items{
+    display:flex; flex-wrap:wrap; align-items:baseline; align-content:center; justify-content:flex-start;
+    font-family:var(--font-mono); font-size:.82rem;
+    font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; row-gap:3px;
+  }
+  .cell-items .item-pair{ display:flex; align-items:baseline; white-space:nowrap; }
+  .cell-items .item-pair + .item-pair{ margin-left:8px; }
+  .cell-items .ic{ flex:0 0 140px; overflow:hidden; text-overflow:ellipsis; text-align:left; }
+  .cell-items .ic.ic-badge{ display:inline-block; padding:1px 5px; border-radius:5px; box-sizing:border-box; }
+  .cell-items .iq{ flex:0 0 34px; text-align:right; }
+  .cell-amount{ display:flex; justify-content:flex-start; }
+  .row-amount{
+    font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:.8rem;
+    color:var(--ink); background:var(--surface-2); border-radius:7px; padding:3px 10px; text-align:center;
+  }
+  .cell-payment{ display:flex; justify-content:flex-start; }
+  /* full address, never truncated */
+  .cell-address{
+    display:flex; align-items:center; justify-content:flex-start; gap:3px; font-size:.72rem; color:var(--ink-muted);
+    font-weight:700; white-space:nowrap;
+  }
+  .cell-address svg{ width:.8em; height:.8em; flex:none; }
+  .cell-status, .cell-deliverer{ display:flex; justify-content:flex-start; }
+  .cell-actions{ display:flex; justify-content:flex-start; gap:2px; }
+  .cell-actions .icon-btn{ width:23px; height:23px; border-radius:6px; }
 
-  /* second, smaller line: everything else, one truncated row */
+  /* second, smaller line under each order: notes / scheduled date. Always
+     rendered (even empty) so the grid's implicit row-count stays a clean
+     multiple of the column count. */
   .row-sub{
+    grid-column: 1 / -1;
     font-size:.7rem; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    text-align:left; min-height:1px; padding:0 0 4px;
+    border-bottom:1px solid var(--border);
   }
+  .order-row:last-child .row-sub{ border-bottom:none; }
 
-  .card-actions-mini{ display:flex; gap:2px; flex:none; }
-  .card-actions-mini .icon-btn{ width:23px; height:23px; border-radius:6px; }
+  @media (max-width:900px){
+    .order-grid{ display:flex; flex-direction:column; background:none; border:none; padding:0; }
+    .order-row{ display:flex; flex-direction:column; gap:1px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:7px 10px; margin-bottom:5px; }
+    .order-row .row-sub{ border-bottom:none; text-align:left; }
+    .order-row > .cell:first-child{ order:-1; }
+    .order-row{ flex-wrap:wrap; }
+    .order-row .cell{ display:inline-flex; align-items:center; text-align:left; justify-content:flex-start; padding:2px 0; width:auto; }
+    .order-row .cell-time{ width:100%; text-align:left; justify-content:flex-start; }
+  }
 
   .pill{ display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; font-size:.66rem; font-weight:600; white-space:nowrap; flex:none; }
   .pill-area{ background:var(--surface-2); color:var(--ink-muted); }
@@ -314,21 +383,24 @@
 
   .item-row{ border:1px solid var(--border); border-radius:12px; padding:10px; margin-bottom:8px; background:var(--bg); }
   .item-row-fields{ display:flex; align-items:center; gap:6px; }
-  .item-code{ flex:5; min-width:0; padding:7px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
-  .item-qtybox{ display:flex; align-items:center; gap:3px; flex:none; }
-  .item-qtybox .iq-btn{
-    width:20px; height:28px; border-radius:7px; border:1px solid var(--border); background:var(--surface-2);
-    color:var(--ink); font-weight:700; font-size:.95rem; cursor:pointer; font-family:var(--font-body); flex:none;
+  /* Scoped with .item-row-fields (not just the bare class) so these beat the
+     generic ".field input{ width:100% }" rule, which otherwise wins on
+     specificity and forces the flex-basis of the wrong field. */
+  .item-row-fields .item-code{ flex:8; min-width:0; width:auto; padding:7px 9px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-row-fields .item-qty{
+    flex:none; width:32px; text-align:center; padding:6px 2px; border-radius:7px; border:1px solid var(--border);
+    background:var(--surface); color:var(--ink); -moz-appearance:textfield;
   }
-  .item-qty{ width:26px; text-align:center; padding:7px 2px; border-radius:7px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
-  .item-amount{ flex:2; min-width:0; width:64px; padding:7px 8px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
-  .item-remove{
+  .item-row-fields .item-qty::-webkit-outer-spin-button, .item-row-fields .item-qty::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .item-row-fields .item-amount{ flex:3; min-width:0; width:auto; padding:7px 8px; border-radius:9px; border:1px solid var(--border); background:var(--surface); color:var(--ink); }
+  .item-row-fields .item-remove{
     flex:none; width:28px; height:28px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
     color:var(--ink-muted); font-size:1.1rem; line-height:1; cursor:pointer;
   }
-  .item-remove:hover{ color:var(--st-cancel-fg); border-color:var(--st-cancel-fg); }
+  .item-row-fields .item-remove:hover{ color:var(--st-cancel-fg); border-color:var(--st-cancel-fg); }
   .item-quick{ display:flex; flex-wrap:wrap; gap:4px; margin-top:7px; }
-  .item-quick button{
+  .item-qty-quick{ display:flex; flex-wrap:wrap; gap:4px; margin-top:4px; }
+  .item-quick button, .item-qty-quick button{
     padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2);
     color:var(--ink-muted); font-size:.72rem; font-weight:600; font-family:var(--font-mono); cursor:pointer;
   }
@@ -436,17 +508,17 @@
   #receiptArea{ display:none; }
   .receipt{
     width:72mm; margin:0 auto; font-family:var(--font-mono); color:#000; background:#fff;
-    font-size:12px; line-height:1.5;
+    font-size:15px; line-height:1.55;
   }
   .receipt .r-brand{ text-align:center; font-family:var(--font-body); font-weight:700; font-size:15px; letter-spacing:.03em; }
   .receipt .r-sub{ text-align:center; font-size:10.5px; margin-top:2px; }
-  .receipt hr{ border:none; border-top:1px dashed #000; margin:8px 0; }
-  .receipt .r-row{ display:flex; justify-content:space-between; gap:10px; margin:2px 0; }
+  .receipt hr{ border:none; border-top:1px dashed #000; margin:9px 0; }
+  .receipt .r-row{ display:flex; justify-content:space-between; gap:10px; margin:3px 0; }
   .receipt .r-row .k{ color:#000; }
-  .receipt .r-customer{ font-size:15px; font-weight:700; margin:2px 0; }
-  .receipt .r-line{ margin:3px 0; overflow-wrap:anywhere; }
-  .receipt .r-amount{ font-size:18px; font-weight:700; text-align:right; }
-  .receipt .r-status{ text-align:center; font-weight:700; border:1px solid #000; padding:3px; margin:8px 0; text-transform:uppercase; letter-spacing:.05em; }
+  .receipt .r-customer{ font-size:20px; font-weight:700; margin:3px 0; }
+  .receipt .r-line{ margin:4px 0; overflow-wrap:anywhere; }
+  .receipt .r-amount{ font-size:24px; font-weight:700; text-align:right; }
+  .receipt .r-status{ font-size:16px; text-align:center; font-weight:700; border:1px solid #000; padding:5px; margin:9px 0; text-transform:uppercase; letter-spacing:.05em; }
   .receipt .r-sign{ margin-top:22px; font-size:11px; }
   .receipt .r-sign .line{ border-top:1px solid #000; margin-top:20px; padding-top:3px; }
   .receipt .r-foot{ text-align:center; font-size:10px; margin-top:10px; color:#000; }
@@ -503,6 +575,8 @@
     <symbol id="ico-pin" viewBox="0 0 24 24"><path d="M12 21s7-7.6 7-12.2A7 7 0 0 0 5 8.8C5 13.4 12 21 12 21z"/><circle cx="12" cy="8.8" r="2.3"/></symbol>
     <symbol id="ico-printer" viewBox="0 0 24 24"><path d="M6 9V4h12v5M4 9h16v7H4zM7 21h10v-6H7z"/><circle cx="17.3" cy="11.7" r=".9" fill="currentColor" stroke="none"/></symbol>
     <symbol id="ico-cash" viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="19" height="11" rx="1.5"/><circle cx="12" cy="12" r="2.6"/><path d="M2.5 9.5c1.6 0 2.5-1 2.5-2.5M21.5 9.5c-1.6 0-2.5-1-2.5-2.5M2.5 14.5c1.6 0 2.5 1 2.5 2.5M21.5 14.5c-1.6 0-2.5 1-2.5 2.5"/></symbol>
+    <symbol id="ico-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5"/><path d="M4 18v1.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V18"/></symbol>
+    <symbol id="ico-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 3.8 1.2 5.3 2 6.3.3.4 0 1.1-.6 1.1H4.6c-.6 0-.9-.7-.6-1.1.8-1 2-2.5 2-6.3z"/><path d="M9.3 19a2.7 2.7 0 0 0 5.4 0"/></symbol>
   </defs>
 </svg>
 
@@ -521,6 +595,8 @@
     <button id="cashBtn" class="icon-btn" title="Ταμείο"><svg class="icon"><use href="#ico-cash"/></svg></button>
     <button id="customersBtn" class="icon-btn" title="Πελάτες"><svg class="icon"><use href="#ico-contacts"/></svg></button>
     <button id="rosterBtn" class="icon-btn" title="Διανομείς &amp; οχήματα" hidden><svg class="icon"><use href="#ico-settings"/></svg></button>
+    <button id="backupBtn" class="icon-btn" title="Backup σε Excel" hidden><svg class="icon"><use href="#ico-download"/></svg></button>
+    <button id="pushBtn" class="icon-btn" title="Ειδοποιήσεις" hidden><svg class="icon"><use href="#ico-bell"/></svg></button>
     <button id="roleBadge" class="role-badge" title="Αλλαγή χρήστη">
       <svg class="icon"><use href="#ico-user"/></svg>
       <b id="roleBadgeText">—</b>
@@ -547,6 +623,10 @@
         <button class="chip" data-area="ΜΑΓΑΖΙ" aria-pressed="false"><svg class="icon"><use href="#ico-store"/></svg> Μαγαζί</button>
       </div>
       <button class="chip mine-toggle" id="mineToggle" aria-pressed="false" hidden>Μόνο δικές μου</button>
+      <select class="deliverer-filter-select" id="delivererFilterSelect" hidden>
+        <option value="ALL">Όλοι οι διανομείς</option>
+        <option value="NONE">Χωρίς ανάθεση</option>
+      </select>
       <div class="search-box">
         <svg class="icon"><use href="#ico-search"/></svg>
         <input id="searchInput" type="search" placeholder="Αναζήτηση πελάτη ή τηλεφώνου…">
@@ -592,8 +672,8 @@
       <input type="hidden" id="f-id">
       <div class="form-grid">
         <div class="field span2">
-          <label for="f-phone">Τηλέφωνο</label>
-          <input id="f-phone" type="tel" autocomplete="off" placeholder="Γράψε πρώτα το τηλέφωνο — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
+          <label for="f-phone">Τηλέφωνο ή Πελάτης</label>
+          <input id="f-phone" type="text" autocomplete="off" placeholder="Γράψε τηλέφωνο ή όνομα πελάτη — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
           <div class="phone-suggest" id="phoneSuggest" hidden></div>
           <p class="field-hint" id="custHint" hidden></p>
         </div>
@@ -783,6 +863,26 @@
   </div>
 </div>
 
+<!-- backup to excel -->
+<div class="modal-overlay" id="backupModalOverlay" hidden>
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-head">
+      <h2>Backup σε Excel</h2>
+      <button class="icon-btn" id="backupModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες της επιλεγμένης ημέρας σε αρχείο Excel, στη μορφή του υπάρχοντος αρχείου καταγραφής (φύλλα Πόλη / Έξω / Μαγαζί). Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν αυτές οι παραγγελίες από το πρόγραμμα.</p>
+    <div class="field">
+      <label for="backupDateInput">Ημερομηνία</label>
+      <input type="date" id="backupDateInput">
+    </div>
+    <p class="field-hint" id="backupCountHint"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="backupCancelBtn">Άκυρο</button>
+      <button type="button" class="btn btn-primary" id="backupDownloadBtn">Λήψη Excel</button>
+    </div>
+  </div>
+</div>
+
 <div id="receiptArea" aria-hidden="true"></div>
 <div id="receiptToolbar" class="receipt-toolbar">
   <div class="rt-msg">Έτοιμο για εκτύπωση — πάτησε <kbd>Ctrl</kbd>+<kbd>P</kbd> (<kbd>⌘</kbd>+<kbd>P</kbd> σε Mac) ή το κουμπί «Εκτύπωση»</div>
@@ -803,6 +903,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
+<!--
+  SheetJS (xlsx), for the "Backup Excel" button — builds an .xlsx workbook of a
+  day's orders entirely in the browser. Served from cdnjs, which IS on the
+  Claude Artifact script allow-list, so it loads in both deployments; the
+  actual file-save step it triggers is still just a normal browser download,
+  which the Artifact viewer's sandbox blocks (same as any other in-page
+  download) — the button works once this page is hosted on its own (GitHub
+  Pages or any normal web host).
+-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.1/xlsx.full.min.js"></script>
+
 <script>
 (function(){
   "use strict";
@@ -813,12 +924,13 @@
      projectId empty keeps the app on its previous storage (Claude Artifact db,
      or local offline mode) so nothing breaks until you fill this in. */
   var FIREBASE_CONFIG = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyClM770YTlVAQp1gh0BuqFOf7DE37wdWSs",
+    authDomain: "dianomi-82617.firebaseapp.com",
+    projectId: "dianomi-82617",
+    storageBucket: "dianomi-82617.firebasestorage.app",
+    messagingSenderId: "175370424759",
+    appId: "1:175370424759:web:9bdd8639cd8e1ac74a5832",
+    measurementId: "G-Y6SB01RH2S"
   };
 
   /* ---------------- constants ---------------- */
@@ -843,6 +955,16 @@
     'Πίστωση':    {cls:'pill-pay-credit'},
     'Προπληρωμή': {cls:'pill-pay-prepaid'}
   };
+  // color-coding for cylinder codes, shown as a badge in the orders list
+  var CODE_COLOR_META = {
+    '0010':   {bg:'#FFFFFF', fg:'#2E86DE', outline:true},
+    '0010Π':  {bg:'#7C3AED', fg:'#FFFFFF'},
+    '0025Π':  {bg:'#7C3AED', fg:'#FFFFFF'}
+  };
+  function getCodeColor(code){
+    if(!code) return null;
+    return CODE_COLOR_META[String(code).toUpperCase()] || null;
+  }
 
   /* ---------------- state ---------------- */
   var db = null;
@@ -850,8 +972,9 @@
   var orders = [];      // {id, ...fields}
   var deliverers = [];  // {id, name, type, active}
   var customers = [];   // {id, name, address, phone, notes}
+  var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
-  var filters = {section:'active', area:'ALL', search:'', mineOnly:false};
+  var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
   var customerSearch = '';
   var knownCodes = new Set();
 
@@ -902,6 +1025,55 @@
   }
   function uid(){ return 'local-' + (localSeq++) + '-' + Date.now(); }
 
+  /* ---------------- Excel backup ----------------
+     Rebuilds one sheet per area (Πόλη / Έξω / Μαγαζί) for a single calendar
+     day, matching the columns of the paper/Excel log this replaces:
+     Α/Α, Πελάτης, Κωδικός, Τεμάχια, Ποσό, Σημειώσεις, Διανομέας, Πληρωμή, Κατάσταση.
+     "Day" is the order's createdAt date. A multi-item order keeps only its
+     total (Ποσό) — Κωδικός/Τεμάχια are left blank for it, since one row can't
+     represent several line items the way the original sheet's single-item
+     rows did. */
+  var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ', 'ΜΑΓΑΖΙ'];
+  var BACKUP_HEADER = ['Α/Α','Πελάτης','Κωδικός','Τεμάχια','Ποσό','Σημειώσεις','Διανομέας','Πληρωμή','Κατάσταση'];
+  /** Every order that a backup for this day covers, across all three areas —
+   *  the exact set the workbook rows come from, and (after the user
+   *  confirms) the exact set that gets removed from the program. */
+  function ordersForBackup(dayStr){
+    return orders.filter(function(o){ return BACKUP_AREAS.indexOf(o.area) !== -1 && isSameDay(o.createdAt, dayStr); });
+  }
+  function buildBackupWorkbook(dayStr){
+    var wb = XLSX.utils.book_new();
+    BACKUP_AREAS.forEach(function(area){
+      var dayOrders = orders
+        .filter(function(o){ return o.area === area && isSameDay(o.createdAt, dayStr); })
+        .slice()
+        .sort(function(a,b){ return new Date(a.createdAt) - new Date(b.createdAt); });
+
+      var rows = [BACKUP_HEADER];
+      dayOrders.forEach(function(o, idx){
+        var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
+        var code = '', qty = '', amount = '';
+        if(lineItems.length === 1){
+          code = lineItems[0].code || '';
+          qty = lineItems[0].qty || '';
+          amount = lineItems[0].amount || '';
+        } else if(lineItems.length > 1){
+          amount = o.amount || '';
+        }
+        rows.push([idx + 1, o.customer || '', code, qty, amount, o.notes || '', o.deliverer || '', o.payment || '', o.status || '']);
+      });
+
+      var ws = XLSX.utils.aoa_to_sheet(rows);
+      ws['!cols'] = [{wch:5},{wch:26},{wch:10},{wch:9},{wch:10},{wch:32},{wch:14},{wch:12},{wch:14}];
+      XLSX.utils.book_append_sheet(wb, ws, area);
+    });
+    return wb;
+  }
+  function downloadBackupExcel(dayStr){
+    var wb = buildBackupWorkbook(dayStr);
+    XLSX.writeFile(wb, 'ZGAS_' + dayStr + '.xlsx');
+  }
+
   function activeDeliverers(){ return deliverers.filter(function(d){ return d.active !== false; }); }
   function nextPaletteColor(){ return DELIVERER_PALETTE[deliverers.length % DELIVERER_PALETTE.length]; }
   function getDelivererByName(name){
@@ -928,13 +1100,23 @@
     return ordersCol().add(data);
   }
   function updateOrder(id, patch){
+    // Capture the order's state *before* the patch so we can tell a fresh
+    // driver assignment (no deliverer, or a different one, becoming this
+    // patch's deliverer) from any other kind of update (status change,
+    // edited notes, etc.) — only a fresh assignment should ping a phone.
+    var prevOrder = orders.find(function(x){ return x.id===id; });
+    var isNewAssignment = !!patch.deliverer && (!prevOrder || prevOrder.deliverer !== patch.deliverer);
+    function afterSave(){
+      if(isNewAssignment) notifyDelivererAssigned(patch.deliverer, prevOrder || {id:id});
+    }
     if(offline){
       var o = orders.find(function(x){ return x.id===id; });
       if(o) Object.assign(o, patch);
       renderAll();
+      afterSave();
       return Promise.resolve();
     }
-    return db.doc('orders/'+id).update(patch);
+    return db.doc('orders/'+id).update(patch).then(afterSave);
   }
   function deleteOrder(id){
     if(offline){
@@ -1014,6 +1196,261 @@
     }
   }
 
+  /* ---------------- push notifications (raw Web Push, no server needed) ----------------
+     When the admin assigns an order to a driver, that admin's own browser
+     sends the notification directly to the driver's phone using the
+     standard Web Push protocol (RFC 8291 message encryption + RFC 8292
+     VAPID), instead of going through a paid backend (Firebase Cloud
+     Functions require the "Blaze" billing plan). No server of ours is
+     involved: the browser's Push API talks straight to Google/Mozilla/
+     Apple's push service, and our page only has to sign and encrypt the
+     message with these VAPID keys.
+
+     IMPORTANT trade-off, by design (asked for explicitly instead of adding
+     a paid Cloud Function): the VAPID private key below lives in this
+     client-side file, so it isn't truly secret — same situation as this
+     app's already-open Firestore rules. If someone copied it they could
+     send fake notifications to your drivers, but they could NOT read or
+     change any of your data through it.
+
+     Also, like the Excel backup button (see downloadBackupExcel), actually
+     *sending* a push (a network request straight to the push service) is
+     blocked by the Claude preview sandbox's content policy — this only
+     works once the app is hosted for real (GitHub Pages). Subscribing a
+     phone to notifications should work in both places. */
+  var VAPID_PUBLIC_KEY  = 'BER64an6PVtpchAJx7-inxqVKrGrCCo0BbpIFJHteplV_dfbLcA6r0Nntx8Vr2geQvf6YNZB3Gaa3kRUvuTs0rg';
+  var VAPID_PRIVATE_KEY = 'drnXZkRnstgoVrr9VSg5QyVmuJWJfaGxGp3F3b6HvBs';
+
+  function b64urlToBytes(s){
+    s = String(s||'').replace(/-/g,'+').replace(/_/g,'/');
+    while(s.length % 4) s += '=';
+    var bin = atob(s);
+    var arr = new Uint8Array(bin.length);
+    for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+    return arr;
+  }
+  function bytesToB64url(bytes){
+    var bin = '';
+    for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function concatBytes(arrs){
+    var len = arrs.reduce(function(s,a){ return s+a.length; }, 0);
+    var out = new Uint8Array(len);
+    var off = 0;
+    arrs.forEach(function(a){ out.set(a, off); off += a.length; });
+    return out;
+  }
+
+  function pushSupported(){
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.crypto && window.crypto.subtle;
+  }
+
+  function importVapidPrivateKey(){
+    var pub = b64urlToBytes(VAPID_PUBLIC_KEY);   // 65 bytes: 0x04 || x(32) || y(32)
+    var d   = b64urlToBytes(VAPID_PRIVATE_KEY);  // 32 bytes
+    var jwk = {
+      kty:'EC', crv:'P-256', ext:true,
+      x: bytesToB64url(pub.slice(1,33)),
+      y: bytesToB64url(pub.slice(33,65)),
+      d: bytesToB64url(d)
+    };
+    return crypto.subtle.importKey('jwk', jwk, {name:'ECDSA', namedCurve:'P-256'}, false, ['sign']);
+  }
+
+  function buildVapidHeader(endpoint){
+    var origin = new URL(endpoint).origin;
+    var header = {typ:'JWT', alg:'ES256'};
+    var payload = {aud: origin, exp: Math.floor(Date.now()/1000) + 12*3600, sub: 'mailto:zgas.rethymno@example.com'};
+    var headerB64 = bytesToB64url(new TextEncoder().encode(JSON.stringify(header)));
+    var payloadB64 = bytesToB64url(new TextEncoder().encode(JSON.stringify(payload)));
+    var unsigned = headerB64 + '.' + payloadB64;
+    return importVapidPrivateKey().then(function(key){
+      return crypto.subtle.sign({name:'ECDSA', hash:'SHA-256'}, key, new TextEncoder().encode(unsigned));
+    }).then(function(sig){
+      var jwt = unsigned + '.' + bytesToB64url(new Uint8Array(sig));
+      return 'vapid t=' + jwt + ', k=' + VAPID_PUBLIC_KEY;
+    });
+  }
+
+  function hmacSha256(keyBytes, dataBytes){
+    return crypto.subtle.importKey('raw', keyBytes, {name:'HMAC', hash:'SHA-256'}, false, ['sign']).then(function(key){
+      return crypto.subtle.sign('HMAC', key, dataBytes);
+    }).then(function(sig){ return new Uint8Array(sig); });
+  }
+
+  // Encrypts one push message per RFC 8291 (aes128gcm content-coding, RFC 8188).
+  function encryptWebPushPayload(payloadObj, p256dhB64, authB64){
+    var uaPublic = b64urlToBytes(p256dhB64);      // subscriber's public key, 65 bytes
+    var authSecret = b64urlToBytes(authB64);      // subscriber's auth secret, 16 bytes
+    var plaintext = new TextEncoder().encode(JSON.stringify(payloadObj));
+    var enc = new TextEncoder();
+    var asKeyPair, asPublicRaw, ecdhSecret, salt, cek, nonce;
+
+    return crypto.subtle.generateKey({name:'ECDH', namedCurve:'P-256'}, true, ['deriveBits']).then(function(kp){
+      asKeyPair = kp;
+      return crypto.subtle.exportKey('raw', asKeyPair.publicKey);
+    }).then(function(raw){
+      asPublicRaw = new Uint8Array(raw);
+      return crypto.subtle.importKey('raw', uaPublic, {name:'ECDH', namedCurve:'P-256'}, false, []);
+    }).then(function(uaPublicKey){
+      return crypto.subtle.deriveBits({name:'ECDH', public: uaPublicKey}, asKeyPair.privateKey, 256);
+    }).then(function(bits){
+      ecdhSecret = new Uint8Array(bits);
+      var keyInfo = concatBytes([enc.encode('WebPush: info'), new Uint8Array([0]), uaPublic, asPublicRaw]);
+      return hmacSha256(authSecret, ecdhSecret).then(function(prk1){
+        return hmacSha256(prk1, concatBytes([keyInfo, new Uint8Array([1])]));
+      });
+    }).then(function(ikm){
+      salt = crypto.getRandomValues(new Uint8Array(16));
+      return hmacSha256(salt, ikm);
+    }).then(function(prk2){
+      var cekInfo   = concatBytes([enc.encode('Content-Encoding: aes128gcm'), new Uint8Array([0]), new Uint8Array([1])]);
+      var nonceInfo = concatBytes([enc.encode('Content-Encoding: nonce'), new Uint8Array([0]), new Uint8Array([1])]);
+      return Promise.all([hmacSha256(prk2, cekInfo), hmacSha256(prk2, nonceInfo)]);
+    }).then(function(res){
+      cek = res[0].slice(0,16);
+      nonce = res[1].slice(0,12);
+      var recordPlain = concatBytes([plaintext, new Uint8Array([2])]); // single-record delimiter
+      return crypto.subtle.importKey('raw', cek, {name:'AES-GCM'}, false, ['encrypt']);
+    }).then(function(aesKey){
+      var recordPlain = concatBytes([plaintext, new Uint8Array([2])]);
+      return crypto.subtle.encrypt({name:'AES-GCM', iv: nonce, tagLength:128}, aesKey, recordPlain);
+    }).then(function(cipherBuf){
+      var ciphertext = new Uint8Array(cipherBuf);
+      var rs = new Uint8Array([0,0,0x10,0x00]); // record size 4096, big-endian
+      var header = concatBytes([salt, rs, new Uint8Array([65]), asPublicRaw]);
+      return concatBytes([header, ciphertext]);
+    });
+  }
+
+  function sendWebPush(subscription, payloadObj){
+    return Promise.all([
+      encryptWebPushPayload(payloadObj, subscription.keys.p256dh, subscription.keys.auth),
+      buildVapidHeader(subscription.endpoint)
+    ]).then(function(res){
+      return fetch(subscription.endpoint, {
+        method: 'POST',
+        headers: {
+          'Authorization': res[1],
+          'Content-Encoding': 'aes128gcm',
+          'Content-Type': 'application/octet-stream',
+          'TTL': '60'
+        },
+        body: res[0]
+      });
+    });
+  }
+
+  function pushSubDocId(name){ return encodeURIComponent(name); }
+
+  function getPushSubscriptions(name){
+    if(offline) return Promise.resolve(localSubs[name] || []);
+    return db.doc('pushSubscriptions/'+pushSubDocId(name)).get().then(function(doc){
+      return (doc.exists && doc.data().subs) || [];
+    });
+  }
+  function savePushSubscription(name, subJson){
+    if(offline){
+      localSubs[name] = (localSubs[name]||[]).filter(function(s){ return s.endpoint !== subJson.endpoint; }).concat([subJson]);
+      return Promise.resolve();
+    }
+    var ref = db.doc('pushSubscriptions/'+pushSubDocId(name));
+    return ref.get().then(function(doc){
+      var subs = (doc.exists && doc.data().subs) || [];
+      subs = subs.filter(function(s){ return s.endpoint !== subJson.endpoint; });
+      subs.push(subJson);
+      return ref.set({name: name, subs: subs, updatedAt: new Date().toISOString()});
+    });
+  }
+  function removePushSubscription(name, endpoint){
+    if(offline){
+      localSubs[name] = (localSubs[name]||[]).filter(function(s){ return s.endpoint !== endpoint; });
+      return Promise.resolve();
+    }
+    var ref = db.doc('pushSubscriptions/'+pushSubDocId(name));
+    return ref.get().then(function(doc){
+      if(!doc.exists) return;
+      var subs = (doc.data().subs||[]).filter(function(s){ return s.endpoint !== endpoint; });
+      return ref.update({subs: subs});
+    });
+  }
+
+  function notifyDelivererAssigned(name, order){
+    if(!pushSupported()) return; // nothing to send to if this browser can't do push at all
+    var payload = {
+      title: 'Νέα παραγγελία σου ανατέθηκε',
+      body: [order.customer, order.address].filter(Boolean).join(' — ') || 'Άνοιξε την εφαρμογή για λεπτομέρειες',
+      tag: 'zgas-order-' + (order.id || uid()),
+      url: './'
+    };
+    getPushSubscriptions(name).then(function(subs){
+      subs.forEach(function(sub){
+        sendWebPush(sub, payload).then(function(res){
+          if(res.status === 404 || res.status === 410){
+            // subscription expired / uninstalled on that phone — stop trying it
+            removePushSubscription(name, sub.endpoint);
+          }
+        }).catch(function(e){ console.error('push send failed', e); });
+      });
+    }).catch(function(e){ console.error('push lookup failed', e); });
+  }
+
+  function enablePushForDriver(name){
+    if(!pushSupported()) return Promise.resolve({ok:false, reason:'unsupported'});
+    return Notification.requestPermission().then(function(perm){
+      if(perm !== 'granted') return {ok:false, reason:'denied'};
+      return navigator.serviceWorker.register('push-sw.js').then(function(reg){
+        return navigator.serviceWorker.ready.then(function(){ return reg; });
+      }).then(function(reg){
+        return reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: b64urlToBytes(VAPID_PUBLIC_KEY)
+        });
+      }).then(function(sub){
+        return savePushSubscription(name, sub.toJSON());
+      }).then(function(){ return {ok:true}; });
+    }).catch(function(e){
+      console.error('enable push failed', e);
+      return {ok:false, reason:'error'};
+    });
+  }
+
+  function disablePushForDriver(name){
+    if(!pushSupported()) return Promise.resolve();
+    return navigator.serviceWorker.getRegistration('push-sw.js').then(function(reg){
+      if(!reg) return;
+      return reg.pushManager.getSubscription().then(function(sub){
+        if(!sub) return;
+        var endpoint = sub.endpoint;
+        return sub.unsubscribe().then(function(){ return removePushSubscription(name, endpoint); });
+      });
+    }).then(function(){ refreshPushBtnState(); }).catch(function(e){ console.error('disable push failed', e); });
+  }
+
+  function refreshPushBtnState(){
+    var btn = document.getElementById('pushBtn');
+    if(!btn || !role || role.type !== 'driver') return;
+    if(!pushSupported()){
+      btn.title = 'Οι ειδοποιήσεις δεν υποστηρίζονται σε αυτή τη συσκευή/browser';
+      btn.classList.remove('active');
+      return;
+    }
+    navigator.serviceWorker.getRegistration('push-sw.js').then(function(reg){
+      return reg ? reg.pushManager.getSubscription() : null;
+    }).then(function(sub){
+      if(sub && Notification.permission === 'granted'){
+        btn.title = 'Οι ειδοποιήσεις είναι ενεργές σε αυτή τη συσκευή — πάτα για απενεργοποίηση';
+        btn.classList.add('active');
+      } else {
+        btn.title = 'Ενεργοποίηση ειδοποιήσεων (ήχος/δόνηση) σε αυτή τη συσκευή';
+        btn.classList.remove('active');
+      }
+    }).catch(function(){
+      btn.title = 'Ενεργοποίηση ειδοποιήσεων (ήχος/δόνηση) σε αυτή τη συσκευή';
+    });
+  }
+
   /* ---------------- role ---------------- */
   function loadRole(){
     try{
@@ -1031,22 +1468,36 @@
   function updateRoleUI(){
     var badgeText = document.getElementById('roleBadgeText');
     var rosterBtn = document.getElementById('rosterBtn');
+    var backupBtn = document.getElementById('backupBtn');
+    var pushBtn = document.getElementById('pushBtn');
     var mineToggle = document.getElementById('mineToggle');
+    var delFilter = document.getElementById('delivererFilterSelect');
     if(!role){
       badgeText.textContent = 'Επιλογή…';
       rosterBtn.hidden = true;
+      backupBtn.hidden = true;
+      pushBtn.hidden = true;
       mineToggle.hidden = true;
+      delFilter.hidden = true;
       return;
     }
     if(role.type === 'admin'){
       badgeText.textContent = 'Διοίκηση';
       rosterBtn.hidden = false;
+      backupBtn.hidden = false;
+      pushBtn.hidden = true;
       mineToggle.hidden = true;
+      delFilter.hidden = false;
+      populateDelivererFilterOptions();
     } else {
       badgeText.textContent = role.name;
       rosterBtn.hidden = true;
+      backupBtn.hidden = true;
+      pushBtn.hidden = false;
       mineToggle.hidden = false;
       mineToggle.setAttribute('aria-pressed', String(!!filters.mineOnly));
+      delFilter.hidden = true;
+      refreshPushBtnState();
     }
   }
 
@@ -1090,13 +1541,23 @@
         if(!inName && !inPhone && !inCustPhone) return false;
       }
       if(filters.mineOnly && role && role.type === 'driver' && o.deliverer !== role.name) return false;
+      if(filters.deliverer && filters.deliverer !== 'ALL'){
+        if(filters.deliverer === 'NONE'){ if(o.deliverer) return false; }
+        else if(o.deliverer !== filters.deliverer) return false;
+      }
+
+      // A scheduled date only keeps an order out of "Ενεργές" while it's
+      // still in the future; once that date arrives (today or past), the
+      // order counts as an ordinary active order and shows there instead.
+      var isFutureScheduled = !!o.scheduledDate && o.scheduledDate > dayNow;
 
       if(filters.section === 'scheduled'){
-        return !!o.scheduledDate && o.status !== 'Ολοκληρώθηκε' && o.status !== 'Ακυρώθηκε';
+        return isFutureScheduled && o.status !== 'Ολοκληρώθηκε' && o.status !== 'Ακυρώθηκε';
       }
       if(filters.section === 'history'){
         return o.status === 'Ολοκληρώθηκε' || o.status === 'Ακυρώθηκε';
       }
+      if(isFutureScheduled) return false;
       return o.status === 'Σε εξέλιξη' || o.status === 'Σε διανομή';
     }).sort(function(a,b){
       if(filters.section === 'scheduled'){
@@ -1111,9 +1572,13 @@
 
   function renderStats(){
     var box = document.getElementById('stats');
+    var dayNow = todayStr();
     var pool = filters.area === 'ALL' ? orders : orders.filter(function(o){ return o.area===filters.area; });
-    var pending = pool.filter(function(o){ return o.status==='Σε εξέλιξη'; }).length;
-    var transit = pool.filter(function(o){ return o.status==='Σε διανομή'; }).length;
+    // Match the "Ενεργές" tab: an order scheduled for a future date doesn't
+    // count as pending/in-transit today yet.
+    var notFutureScheduled = function(o){ return !o.scheduledDate || o.scheduledDate <= dayNow; };
+    var pending = pool.filter(function(o){ return o.status==='Σε εξέλιξη' && notFutureScheduled(o); }).length;
+    var transit = pool.filter(function(o){ return o.status==='Σε διανομή' && notFutureScheduled(o); }).length;
     var doneToday = pool.filter(function(o){ return o.status==='Ολοκληρώθηκε' && isSameDay(o.updatedAt, todayStr()); }).length;
     box.innerHTML =
       '<div class="stat-tile pending"><div class="n">'+pending+'</div><div class="l">Σε εξέλιξη</div></div>' +
@@ -1129,6 +1594,18 @@
     return html;
   }
 
+  function populateDelivererFilterOptions(){
+    var sel = document.getElementById('delivererFilterSelect');
+    if(!sel) return;
+    var current = filters.deliverer || 'ALL';
+    var html = '<option value="ALL">Όλοι οι διανομείς</option><option value="NONE">Χωρίς ανάθεση</option>';
+    deliverers.slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||'', 'el'); }).forEach(function(d){
+      html += '<option value="'+esc(d.name)+'"'+(d.name===current?' selected':'')+'>'+esc(d.name)+'</option>';
+    });
+    sel.innerHTML = html;
+    sel.value = current === 'ALL' || current === 'NONE' || deliverers.some(function(d){ return d.name===current; }) ? current : 'ALL';
+  }
+
   function renderOrderCard(o){
     var am = AREA_META[o.area] || {label:o.area, icon:'ico-box'};
     var sm = STATUS_META[o.status] || {cls:'st-pending', short:o.status};
@@ -1139,70 +1616,94 @@
     var canEditDetails = role && role.type === 'admin';
     var canTouchAssignment = role && (role.type === 'admin' || (role.type==='driver' && (!o.deliverer || o.deliverer===role.name)));
     var canTouchStatus = role && (role.type === 'admin' || (role.type==='driver' && o.deliverer===role.name));
+    var isMyOrderWithNextStep = role && role.type==='driver' && o.deliverer===role.name && NEXT_STATUS[o.status];
 
     var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
-    var itemsSummary = '';
+    var itemsHTML = lineItems.map(function(it){
+      var code = it.code ? esc(it.code) : '';
+      var qty = it.qty ? '×'+esc(it.qty) : '';
+      var cc = getCodeColor(it.code);
+      var icClass = 'ic' + (cc ? ' ic-badge' : '');
+      var icStyle = cc ? ' style="background:'+cc.bg+';color:'+cc.fg+';'+(cc.outline?'box-shadow:inset 0 0 0 1px var(--border);':'')+'"' : '';
+      return '<span class="item-pair"><span class="'+icClass+'"'+icStyle+'>'+code+'</span><span class="iq">'+qty+'</span></span>';
+    }).join('');
+    var amountText = '';
     if(lineItems.length === 1){
-      var it0 = lineItems[0];
-      var parts0 = [];
-      if(it0.code) parts0.push('#'+it0.code);
-      if(it0.qty) parts0.push('×'+it0.qty);
-      itemsSummary = parts0.join(' ');
-      if(it0.amount) itemsSummary += (itemsSummary ? '  ' : '') + fmtMoney(it0.amount);
+      if(lineItems[0].amount) amountText = fmtMoney(lineItems[0].amount);
     } else if(lineItems.length > 1){
-      itemsSummary = lineItems.length + ' είδη';
-      if(o.amount) itemsSummary += '  ' + fmtMoney(o.amount);
+      if(o.amount) amountText = fmtMoney(o.amount);
     }
+    var addressText = [o.address, o.floor].filter(Boolean).join(' — ');
 
+    // Every order renders the SAME fixed set of grid cells, in the same
+    // order, so every column lines up (and centers) with the one above and
+    // below it — like a spreadsheet. .order-row is display:contents, so
+    // these cells become direct children of the #orderGrid grid.
     var html = '';
-    html += '<div class="row-main">';
-    html += '  <span class="customer"></span>';
-    html += '  <span class="area-mini"><svg class="icon"><use href="#'+am.icon+'"/></svg><span>'+esc(am.label)+'</span></span>';
-    if(itemsSummary) html += '  <span class="items-summary"></span>';
-    if(o.payment) html += '  <span class="pill '+(pm?pm.cls:'pill-area')+'">'+esc(o.payment)+'</span>';
-    html += '  <span class="row-spacer"></span>';
+    html += '  <div class="cell cell-time"></div>';
+    html += '  <div class="cell cell-customer"></div>';
+    html += '  <div class="cell cell-area"><svg class="icon"><use href="#'+am.icon+'"/></svg><span>'+esc(am.label)+'</span></div>';
+    html += '  <div class="cell cell-items">'+itemsHTML+'</div>';
+    html += '  <div class="cell cell-amount">'+(amountText ? '<span class="row-amount"></span>' : '')+'</div>';
+    html += '  <div class="cell cell-payment">'+(o.payment ? '<span class="pill '+(pm?pm.cls:'pill-area')+'">'+esc(o.payment)+'</span>' : '')+'</div>';
+    html += '  <div class="cell cell-address">'+(addressText ? '<svg class="icon"><use href="#ico-pin"/></svg><span></span>' : '')+'</div>';
+    html += '  <div class="cell cell-status">';
     if(canTouchStatus){
-      html += '  <select class="pill-select status-select '+sm.cls+'"></select>';
+      html += '    <select class="pill-select status-select '+sm.cls+'"></select>';
     } else {
-      html += '  <span class="pill '+sm.cls.replace('st-','pill-')+'" style="background:var(--'+sm.cls+'-bg);color:var(--'+sm.cls+'-fg);">'+esc(sm.short)+'</span>';
+      html += '    <span class="pill '+sm.cls.replace('st-','pill-')+'" style="background:var(--'+sm.cls+'-bg);color:var(--'+sm.cls+'-fg);">'+esc(sm.short)+'</span>';
     }
+    html += '  </div>';
+    html += '  <div class="cell cell-deliverer">';
     if(role && role.type === 'admin'){
-      html += '  <select class="deliverer-select"></select>';
+      html += '    <select class="deliverer-select"></select>';
     } else if(!o.deliverer && canTouchAssignment){
-      html += '  <button class="claim-btn">Ανάληψη</button>';
+      html += '    <button class="claim-btn">Ανάληψη</button>';
+    } else if(isMyOrderWithNextStep){
+      html += '    <button class="advance-btn">'+esc(NEXT_LABEL[o.status])+'</button>';
     } else if(o.deliverer){
       var dChipColor = getDelivererColor(o.deliverer);
-      html += '  <span class="deliverer-chip">' + (dChipColor ? '<span class="dot" style="background:'+dChipColor+';"></span>' : '') + '<svg class="icon"><use href="#'+(isVehicle(o.deliverer)?'ico-truck':'ico-user')+'"/></svg><span class="deliverer-name-val"></span></span>';
+      html += '    <span class="deliverer-chip">' + (dChipColor ? '<span class="dot" style="background:'+dChipColor+';"></span>' : '') + '<svg class="icon"><use href="#'+(isVehicle(o.deliverer)?'ico-truck':'ico-user')+'"/></svg><span class="deliverer-name-val"></span></span>';
     }
-    if(o.deliverer===role?.name && role?.type==='driver' && NEXT_STATUS[o.status]){
-      html += '  <button class="advance-btn">'+esc(NEXT_LABEL[o.status])+'</button>';
-    }
-    html += '  <span class="card-actions-mini">';
+    html += '  </div>';
+    html += '  <div class="cell cell-actions">';
     html += '    <button class="icon-btn print-btn" title="Εκτύπωση απόδειξης"><svg class="icon"><use href="#ico-printer"/></svg></button>';
     if(canEditDetails){
       html += '    <button class="icon-btn edit-btn" title="Επεξεργασία"><svg class="icon"><use href="#ico-edit"/></svg></button>';
       html += '    <button class="icon-btn del-btn" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
     }
-    html += '  </span>';
-    html += '</div>';
-    html += '<div class="row-sub"></div>';
+    html += '  </div>';
+    html += '  <div class="row-sub"></div>';
 
     card.innerHTML = html;
 
     var cardDelColor = getDelivererColor(o.deliverer);
-    if(cardDelColor) card.style.borderLeft = '4px solid ' + cardDelColor;
+    var timeCell = card.querySelector('.cell-time');
+    if(cardDelColor && timeCell) timeCell.style.borderLeft = '3px solid ' + cardDelColor;
+
+    // drag-and-drop: admins can drag a card (by its customer cell) onto an
+    // area chip to reassign its area
+    var customerCell = card.querySelector('.cell-customer');
+    if(canEditDetails && customerCell){
+      customerCell.draggable = true;
+      customerCell.addEventListener('dragstart', function(e){
+        e.dataTransfer.setData('text/plain', o.id);
+        e.dataTransfer.effectAllowed = 'move';
+        card.classList.add('dragging');
+      });
+      customerCell.addEventListener('dragend', function(){ card.classList.remove('dragging'); });
+    }
 
     // fill text-content (escaped) fields
-    card.querySelector('.customer').textContent = o.customer || '(χωρίς όνομα)';
-    var itemsEl = card.querySelector('.items-summary'); if(itemsEl) itemsEl.textContent = itemsSummary;
+    if(customerCell) customerCell.textContent = o.customer || '(χωρίς όνομα)';
+    var addressEl = card.querySelector('.cell-address span:last-child'); if(addressEl) addressEl.textContent = addressText;
+    var amountEl = card.querySelector('.row-amount'); if(amountEl) amountEl.textContent = amountText;
+    var timeEl = card.querySelector('.cell-time'); if(timeEl) timeEl.textContent = fmtRelative(o.createdAt);
     var delNameEl = card.querySelector('.deliverer-name-val'); if(delNameEl) delNameEl.textContent = o.deliverer;
 
     var subParts = [];
-    if(o.phone) subParts.push(o.phone);
-    if(o.address || o.floor) subParts.push([o.address, o.floor].filter(Boolean).join(' — '));
     if(o.scheduledDate) subParts.push('Για ' + fmtDateShort(o.scheduledDate));
     if(o.notes) subParts.push(o.notes);
-    subParts.push(fmtRelative(o.createdAt));
     var subEl = card.querySelector('.row-sub');
     if(subEl) subEl.textContent = subParts.join('  ·  ');
 
@@ -1272,15 +1773,18 @@
       ' ' + String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
 
     var html = '';
-    html += '<div class="r-brand">ZGAS ΡΕΘΥΜΝΟ</div>';
-    html += '<div class="r-sub">Δελτίο παραγγελίας &amp; διανομής</div>';
-    html += '<hr>';
     html += '<div class="r-row"><span class="k">Περιοχή</span><span>'+esc(am.label || o.area || '')+'</span></div>';
     html += '<div class="r-row"><span class="k">Εκτύπωση</span><span>'+esc(stamp)+'</span></div>';
     html += '<hr>';
     html += '<div class="r-customer">'+esc(o.customer || '')+'</div>';
     if(o.address || o.floor) html += '<div class="r-line"><span class="k">Διεύθ.:</span> <span>'+esc([o.address, o.floor].filter(Boolean).join(' — '))+'</span></div>';
     if(o.phone) html += '<div class="r-line"><span class="k">Τηλ.:</span> <span>'+esc(o.phone)+'</span></div>';
+    // The customer's own stored notes (from their profile in "Πελάτες"),
+    // as opposed to o.notes below which is specific to this one order.
+    var relatedCustomer = (o.phone && findCustomerByPhone(o.phone)) || findCustomerByName(o.customer);
+    if(relatedCustomer && relatedCustomer.notes){
+      html += '<div class="r-line" style="font-weight:700;"><span class="k">Παρατηρήσεις πελάτη:</span> <span>'+esc(relatedCustomer.notes)+'</span></div>';
+    }
     html += '<hr>';
     var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
     lineItems.forEach(function(it){
@@ -1291,10 +1795,8 @@
     if(o.amount){ html += '<div class="r-row r-amount-row"><span class="k">'+(lineItems.length > 1 ? 'Σύνολο' : '')+'</span><span class="r-amount">'+esc(fmtMoney(o.amount))+'</span></div>'; }
     if(o.deliverer){ html += '<div class="r-row"><span class="k">Διανομέας/Όχημα</span><span>'+esc(o.deliverer)+'</span></div>'; }
     if(o.scheduledDate){ html += '<div class="r-row"><span class="k">Προγραμματισμός</span><span>' + esc(fmtDateShort(o.scheduledDate)) + '</span></div>'; }
-    if(o.notes){ html += '<hr><div class="r-line"><span class="k">Σημειώσεις:</span> <span>'+esc(o.notes)+'</span></div>'; }
+    if(o.notes){ html += '<hr><div class="r-line" style="font-weight:700;"><span class="k">Σημειώσεις:</span> <span>'+esc(o.notes)+'</span></div>'; }
     html += '<div class="r-status">'+esc(sm.short || o.status || '')+'</div>';
-    html += '<div class="r-sign"><div class="line">Υπογραφή παραλήπτη</div></div>';
-    html += '<div class="r-foot">ΖGAS Ρέθυμνο</div>';
     return '<div class="receipt">' + html + '</div>';
   }
 
@@ -1312,16 +1814,16 @@
   // page in it) and printing that tab instead.
   var RECEIPT_PRINT_CSS =
     "body{margin:0;background:#fff;}" +
-    ".receipt{width:72mm;margin:0 auto;font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;font-size:12px;line-height:1.5;padding:6px 0;}" +
+    ".receipt{width:72mm;margin:0 auto;font-family:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:#000;background:#fff;font-size:15px;line-height:1.55;padding:6px 0;}" +
     ".receipt .r-brand{text-align:center;font-family:'IBM Plex Sans',system-ui,sans-serif;font-weight:700;font-size:15px;letter-spacing:.03em;}" +
     ".receipt .r-sub{text-align:center;font-size:10.5px;margin-top:2px;}" +
-    ".receipt hr{border:none;border-top:1px dashed #000;margin:8px 0;}" +
-    ".receipt .r-row{display:flex;justify-content:space-between;gap:10px;margin:2px 0;}" +
+    ".receipt hr{border:none;border-top:1px dashed #000;margin:9px 0;}" +
+    ".receipt .r-row{display:flex;justify-content:space-between;gap:10px;margin:3px 0;}" +
     ".receipt .r-row .k{color:#000;}" +
-    ".receipt .r-customer{font-size:15px;font-weight:700;margin:2px 0;}" +
-    ".receipt .r-line{margin:3px 0;overflow-wrap:anywhere;}" +
-    ".receipt .r-amount{font-size:18px;font-weight:700;text-align:right;}" +
-    ".receipt .r-status{text-align:center;font-weight:700;border:1px solid #000;padding:3px;margin:8px 0;text-transform:uppercase;letter-spacing:.05em;}" +
+    ".receipt .r-customer{font-size:20px;font-weight:700;margin:3px 0;}" +
+    ".receipt .r-line{margin:4px 0;overflow-wrap:anywhere;}" +
+    ".receipt .r-amount{font-size:24px;font-weight:700;text-align:right;}" +
+    ".receipt .r-status{font-size:16px;text-align:center;font-weight:700;border:1px solid #000;padding:5px;margin:9px 0;text-transform:uppercase;letter-spacing:.05em;}" +
     ".receipt .r-sign{margin-top:22px;font-size:11px;}" +
     ".receipt .r-sign .line{border-top:1px solid #000;margin-top:20px;padding-top:3px;}" +
     ".receipt .r-foot{text-align:center;font-size:10px;margin-top:10px;color:#000;}" +
@@ -1345,18 +1847,19 @@
         '<button type="button" onclick="window.print()">Εκτύπωση</button>' +
       '</div>' +
       receiptHTML +
+      '<script>window.onafterprint = function(){ try{ window.close(); }catch(e){} };<\/script>' +
       '</body></html>'
     );
     win.document.close();
-    // A print() call triggered by OUR script (from the opener, or even
-    // immediately here) is not always honored as a genuine user action by
-    // every browser/embedding — that's why we also render a real, clickable
-    // "Εκτύπωση" button written directly into this new tab's own document
-    // above: a click on THAT button is an unambiguous user gesture inside
-    // this window, which is the most reliable way to open the print dialog
-    // when the automatic attempt below doesn't fire one.
+    // The auto-close handler above is written directly into this new tab's
+    // own document (not attached from here), and — crucially — goes in
+    // BEFORE we call print() below: window.print() blocks this script until
+    // the dialog is dismissed, so binding the listener any later can miss
+    // the "afterprint" event entirely, whether print() fires it automatically
+    // or the person triggers it via the visible "Εκτύπωση" button (kept here
+    // since an automatic print() call isn't always honored as a genuine user
+    // action by every browser/embedding).
     try{ win.focus(); win.print(); }catch(e){}
-    try{ win.addEventListener('afterprint', function(){ try{ win.close(); }catch(e2){} }); }catch(e){}
     return true;
   }
 
@@ -1455,20 +1958,18 @@
     row.innerHTML =
       '<div class="item-row-fields">' +
         '<input class="item-code" list="codeList" placeholder="Περιγραφή είδους" autocomplete="off">' +
-        '<div class="item-qtybox">' +
-          '<button type="button" class="iq-btn iq-minus" tabindex="-1" aria-label="Μείωση">−</button>' +
-          '<input class="item-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="0">' +
-          '<button type="button" class="iq-btn iq-plus" tabindex="-1" aria-label="Αύξηση">+</button>' +
-        '</div>' +
+        '<input class="item-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="0">' +
         '<input class="item-amount" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Ποσό €">' +
         '<button type="button" class="item-remove" tabindex="-1" title="Αφαίρεση γραμμής">&times;</button>' +
       '</div>' +
-      '<div class="item-quick"></div>';
+      '<div class="item-quick"></div>' +
+      '<div class="item-qty-quick"></div>';
 
     var codeInput = row.querySelector('.item-code');
     var qtyInput = row.querySelector('.item-qty');
     var amountInput = row.querySelector('.item-amount');
     var quickBox = row.querySelector('.item-quick');
+    var qtyQuickBox = row.querySelector('.item-qty-quick');
 
     codeInput.value = item.code || '';
     qtyInput.value = item.qty || '';
@@ -1491,12 +1992,18 @@
     syncQuickPressed();
     codeInput.addEventListener('input', syncQuickPressed);
 
-    row.querySelector('.iq-minus').addEventListener('click', function(){
-      qtyInput.value = Math.max(0, (parseInt(qtyInput.value, 10) || 0) - 1);
+    [1, 2, 5].forEach(function(n){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.tabIndex = -1;
+      btn.textContent = String(n);
+      btn.addEventListener('click', function(){
+        qtyInput.value = (parseInt(qtyInput.value, 10) || 0) + n;
+        qtyInput.focus();
+      });
+      qtyQuickBox.appendChild(btn);
     });
-    row.querySelector('.iq-plus').addEventListener('click', function(){
-      qtyInput.value = (parseInt(qtyInput.value, 10) || 0) + 1;
-    });
+
     amountInput.addEventListener('input', recomputeItemsTotal);
     row.querySelector('.item-remove').addEventListener('click', function(){
       if(list.children.length > 1){
@@ -1773,6 +2280,11 @@
     // keep the customers list live (e.g. right after a delete) while it's open
     var custModal = document.getElementById('customersModalOverlay');
     if(custModal && !custModal.hidden) renderCustomersList();
+    // same for the roster: without this, toggling a deliverer active/inactive
+    // (or recoloring one) silently updates the data but the switch/swatch on
+    // screen never reflects it until the modal is closed and reopened.
+    var rosterModal = document.getElementById('rosterModalOverlay');
+    if(rosterModal && !rosterModal.hidden) renderRoster();
   }
 
   /* ---------------- modals ---------------- */
@@ -1810,10 +2322,33 @@
 
   // global shortcut: the backtick key (`, left of "1") opens a new order
   // from anywhere, unless a modal is already open or the person is typing
-  // in an editable field.
+  // in an editable field. But while "Νέα παραγγελία" itself is open, the
+  // SAME key instead saves and closes it — as soon as the required fields
+  // are filled in, pressing ` again finishes the order (even mid-typing in
+  // one of its fields, so no need to reach for the mouse).
   document.addEventListener('keydown', function(e){
     if(e.key !== '`' && e.key !== '~' && e.code !== 'Backquote') return;
     if(e.ctrlKey || e.metaKey || e.altKey) return;
+
+    var orderOverlay = document.getElementById('orderModalOverlay');
+    if(orderOverlay && !orderOverlay.hidden){
+      // Let a dialog stacked on top (e.g. "new customer?") get resolved
+      // first; a second ` press after that closes, does nothing here.
+      var confirmDialog = document.getElementById('confirmDialogOverlay');
+      var confirmCustomer = document.getElementById('confirmCustomerOverlay');
+      if((confirmDialog && !confirmDialog.hidden) || (confirmCustomer && !confirmCustomer.hidden)) return;
+      var form = document.getElementById('orderForm');
+      if(!form.checkValidity()){
+        e.preventDefault();
+        form.reportValidity();
+        return;
+      }
+      e.preventDefault();
+      if(typeof form.requestSubmit === 'function'){ form.requestSubmit(); }
+      else { form.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true})); }
+      return;
+    }
+
     var t = e.target;
     var tag = t && t.tagName;
     if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (t && t.isContentEditable)) return;
@@ -1835,8 +2370,12 @@
     confirmDialogCallback = onYes;
     document.getElementById('confirmDialogMsg').textContent = message;
     var yesBtn = document.getElementById('confirmDialogYes');
+    var cancelBtn = document.getElementById('confirmDialogCancel');
     yesBtn.textContent = opts.yesLabel || 'Διαγραφή';
     yesBtn.classList.toggle('btn-danger', opts.danger !== false);
+    // hideCancel: for plain informational messages (e.g. "notifications
+    // enabled") that just need an "OK", not a real yes/no choice.
+    cancelBtn.hidden = !!opts.hideCancel;
     document.getElementById('confirmDialogOverlay').hidden = false;
   }
   function closeConfirmDialog(){
@@ -1850,6 +2389,36 @@
   });
   document.getElementById('confirmDialogCancel').addEventListener('click', closeConfirmDialog);
   document.getElementById('confirmDialogOverlay').addEventListener('click', function(e){ if(e.target === this) closeConfirmDialog(); });
+
+  // Esc steps back one layer at a time: the topmost open dialog/modal closes
+  // first (e.g. a confirmation on top of the order form closes without
+  // touching the form behind it), then a second Esc closes the next one down.
+  document.addEventListener('keydown', function(e){
+    if(e.key !== 'Escape') return;
+    var steps = [
+      {id: 'confirmDialogOverlay', action: closeConfirmDialog},
+      {id: 'confirmCustomerOverlay', action: function(){ document.getElementById('confirmCustomerNo').click(); }},
+      {id: 'customerFormOverlay', action: function(){ document.getElementById('customerFormOverlay').hidden = true; }},
+      {id: 'customersModalOverlay', action: function(){ document.getElementById('customersModalOverlay').hidden = true; }},
+      {id: 'rosterModalOverlay', action: function(){ document.getElementById('rosterModalOverlay').hidden = true; }},
+      {id: 'backupModalOverlay', action: function(){ document.getElementById('backupModalOverlay').hidden = true; }},
+      {id: 'cashDetailOverlay', action: function(){ document.getElementById('cashDetailOverlay').hidden = true; }},
+      {id: 'cashModalOverlay', action: function(){ document.getElementById('cashModalOverlay').hidden = true; }},
+      {id: 'orderModalOverlay', action: closeOrderModal}
+    ];
+    for(var i = 0; i < steps.length; i++){
+      var el = document.getElementById(steps[i].id);
+      if(el && !el.hidden){
+        e.preventDefault();
+        steps[i].action();
+        return;
+      }
+    }
+    if(document.body.classList.contains('receipt-mode')){
+      e.preventDefault();
+      exitReceiptMode();
+    }
+  });
 
   var pendingOrder = null; // {id, data} awaiting the new-customer confirmation
 
@@ -1951,6 +2520,13 @@
     if(match.notes) bits.push('«' + match.notes + '»');
     hint.textContent = 'Γνωστός πελάτης: ' + match.name + (bits.length ? ' — ' + bits.join(' · ') : '');
     hint.hidden = false;
+    // Everything about the customer is already filled in — jump straight to
+    // the first item row so the next thing typed is what they're buying.
+    var firstCode = document.querySelector('#itemsList .item-code');
+    if(firstCode){
+      firstCode.focus();
+      firstCode.select();
+    }
   }
 
   var phoneSuggestIndex = -1;
@@ -1988,27 +2564,45 @@
     box.hidden = matches.length === 0;
   }
 
+  // This one field doubles as phone-or-name search: whatever digits are in
+  // it are matched against phone numbers, and the raw text is also matched
+  // against customer names, so staff can find a customer either way.
   document.getElementById('f-phone').addEventListener('input', function(){
     var hint = document.getElementById('custHint');
     var suggestBox = document.getElementById('phoneSuggest');
-    var qDigits = normPhone(this.value);
+    var rawVal = this.value;
+    var qDigits = normPhone(rawVal);
+    var qText = rawVal.trim().toLowerCase();
 
-    if(qDigits.length < 4){
+    if(qDigits.length < 3 && qText.length < 2){
       hint.hidden = true;
       suggestBox.hidden = true;
       phoneSuggestIndex = -1;
       return;
     }
 
-    var exact = findCustomerByPhone(this.value);
+    var exact = findCustomerByPhone(rawVal) || findCustomerByName(rawVal);
     if(exact){
       suggestBox.hidden = true;
       phoneSuggestIndex = -1;
+      this.value = exact.phone || this.value;
       applyCustomerMatch(exact);
       return;
     }
 
-    var candidates = customers.filter(function(c){ return normPhone(c.phone).indexOf(qDigits) !== -1; });
+    var seen = {};
+    var candidates = [];
+    if(qDigits.length >= 3){
+      customers.forEach(function(c){
+        if(!seen[c.id] && normPhone(c.phone).indexOf(qDigits) !== -1){ seen[c.id] = true; candidates.push(c); }
+      });
+    }
+    if(qText.length >= 2){
+      customers.forEach(function(c){
+        if(!seen[c.id] && String(c.name||'').toLowerCase().indexOf(qText) !== -1){ seen[c.id] = true; candidates.push(c); }
+      });
+    }
+
     if(candidates.length){
       hint.hidden = true;
       renderPhoneSuggestions(candidates, this);
@@ -2026,6 +2620,15 @@
     var box = document.getElementById('phoneSuggest');
     var items = box.hidden ? [] : Array.prototype.slice.call(box.children);
     if(!items.length) return;
+    if(e.key === 'Escape'){
+      // first Esc just dismisses the suggestion list; a second Esc (handled
+      // by the document-level handler) then closes the order form itself.
+      e.preventDefault();
+      e.stopPropagation();
+      box.hidden = true;
+      phoneSuggestIndex = -1;
+      return;
+    }
     if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
       e.preventDefault();
       if(e.key === 'ArrowDown'){ phoneSuggestIndex = (phoneSuggestIndex + 1) % items.length; }
@@ -2037,9 +2640,9 @@
     if(e.key === 'Enter' && phoneSuggestIndex >= 0 && phoneSuggestIndex < items.length){
       e.preventDefault();
       e.stopPropagation();
-      var chosen = items[phoneSuggestIndex];
-      chosen.click();
-      focusNextField(this);
+      // the click's applyCustomerMatch() call already moves focus on to the
+      // item description field — nothing else to do here.
+      items[phoneSuggestIndex].click();
     }
   });
 
@@ -2137,6 +2740,72 @@
     renderRoster();
   });
 
+  // backup to excel
+  function updateBackupCountHint(){
+    var dayStr = document.getElementById('backupDateInput').value;
+    var hint = document.getElementById('backupCountHint');
+    if(!dayStr){ hint.textContent = ''; return; }
+    var count = orders.filter(function(o){ return isSameDay(o.createdAt, dayStr); }).length;
+    hint.textContent = count + ' παραγγελί' + (count === 1 ? 'α' : 'ες') + ' αυτή την ημέρα.';
+  }
+  document.getElementById('backupBtn').addEventListener('click', function(){
+    document.getElementById('backupDateInput').value = todayStr();
+    updateBackupCountHint();
+    document.getElementById('backupModalOverlay').hidden = false;
+  });
+  document.getElementById('backupModalClose').addEventListener('click', function(){ document.getElementById('backupModalOverlay').hidden = true; });
+  document.getElementById('backupCancelBtn').addEventListener('click', function(){ document.getElementById('backupModalOverlay').hidden = true; });
+  document.getElementById('backupModalOverlay').addEventListener('click', function(e){ if(e.target === this) this.hidden = true; });
+  document.getElementById('backupDateInput').addEventListener('change', updateBackupCountHint);
+  document.getElementById('backupDownloadBtn').addEventListener('click', function(){
+    var dayStr = document.getElementById('backupDateInput').value;
+    var hint = document.getElementById('backupCountHint');
+    if(!dayStr) return;
+    if(typeof XLSX === 'undefined'){
+      hint.textContent = 'Δεν φορτώθηκε η βιβλιοθήκη Excel (χρειάζεται σύνδεση στο internet) — δοκίμασε ξανά.';
+      return;
+    }
+    var dayOrders = ordersForBackup(dayStr);
+    downloadBackupExcel(dayStr);
+    document.getElementById('backupModalOverlay').hidden = true;
+    if(dayOrders.length){
+      showConfirm(
+        'Έγινε η λήψη του αρχείου Excel. Να διαγραφούν οι ' + dayOrders.length + ' παραγγελί' + (dayOrders.length === 1 ? 'α' : 'ες') + ' αυτής της ημέρας από το πρόγραμμα;',
+        function(){ dayOrders.forEach(function(o){ deleteOrder(o.id); }); },
+        {yesLabel: 'Διαγραφή', danger: true}
+      );
+    }
+  });
+
+  // push notifications toggle (driver only)
+  document.getElementById('pushBtn').addEventListener('click', function(){
+    if(!role || role.type !== 'driver') return;
+    if(!pushSupported()){
+      showConfirm('Οι ειδοποιήσεις push δεν υποστηρίζονται σε αυτόν τον browser ή συσκευή.', function(){}, {yesLabel:'Εντάξει', hideCancel:true});
+      return;
+    }
+    navigator.serviceWorker.getRegistration('push-sw.js').then(function(reg){
+      return reg ? reg.pushManager.getSubscription() : null;
+    }).then(function(sub){
+      if(sub && Notification.permission === 'granted'){
+        showConfirm('Οι ειδοποιήσεις είναι ήδη ενεργές σε αυτή τη συσκευή. Να απενεργοποιηθούν;', function(){
+          disablePushForDriver(role.name);
+        }, {yesLabel:'Απενεργοποίηση', danger:true});
+        return;
+      }
+      enablePushForDriver(role.name).then(function(result){
+        refreshPushBtnState();
+        if(result.ok){
+          showConfirm('Ενεργοποιήθηκαν οι ειδοποιήσεις (ήχος/δόνηση) σε αυτή τη συσκευή για νέες αναθέσεις παραγγελιών.', function(){}, {yesLabel:'Εντάξει', hideCancel:true});
+        } else if(result.reason === 'denied'){
+          showConfirm('Δεν δόθηκε άδεια για ειδοποιήσεις. Άλλαξέ το από τις ρυθμίσεις ειδοποιήσεων του browser ή του κινητού και ξαναδοκίμασε.', function(){}, {yesLabel:'Εντάξει', hideCancel:true});
+        } else {
+          showConfirm('Κάτι πήγε στραβά κατά την ενεργοποίηση των ειδοποιήσεων. Δοκίμασε ξανά.', function(){}, {yesLabel:'Εντάξει', hideCancel:true});
+        }
+      });
+    });
+  });
+
   // role badge / overlay
   document.getElementById('roleBadge').addEventListener('click', function(){
     renderRoleOverlay();
@@ -2165,10 +2834,38 @@
     renderAll();
   });
 
+  // area chips as drag-and-drop targets: dropping an order card on a chip
+  // (except "Όλες") reassigns that order's area
+  document.querySelectorAll('#areaChips .chip').forEach(function(chip){
+    var targetArea = chip.dataset.area;
+    if(!targetArea || targetArea === 'ALL') return;
+    chip.addEventListener('dragover', function(e){
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      chip.classList.add('drop-target');
+    });
+    chip.addEventListener('dragleave', function(){ chip.classList.remove('drop-target'); });
+    chip.addEventListener('drop', function(e){
+      e.preventDefault();
+      chip.classList.remove('drop-target');
+      var id = e.dataTransfer.getData('text/plain');
+      if(!id) return;
+      var o = orders.find(function(x){ return x.id === id; });
+      if(!o || o.area === targetArea) return;
+      updateOrder(o.id, {area: targetArea, updatedAt: new Date().toISOString()});
+    });
+  });
+
   // mine toggle
   document.getElementById('mineToggle').addEventListener('click', function(){
     filters.mineOnly = !filters.mineOnly;
     this.setAttribute('aria-pressed', String(filters.mineOnly));
+    renderOrders();
+  });
+
+  // deliverer filter (admin)
+  document.getElementById('delivererFilterSelect').addEventListener('change', function(){
+    filters.deliverer = this.value;
     renderOrders();
   });
 
@@ -2232,6 +2929,18 @@
     }
   }
 
+  // Moves scheduled orders into "Ενεργές" on their own once their date
+  // arrives, even if nothing else changes (e.g. the tab was left open
+  // overnight) — checked periodically rather than tied to any user action.
+  var lastKnownDay = todayStr();
+  setInterval(function(){
+    var d = todayStr();
+    if(d !== lastKnownDay){
+      lastKnownDay = d;
+      renderAll();
+    }
+  }, 60000);
+
   function boot(){
     loadRole();
     updateRoleUI();
@@ -2282,5 +2991,4 @@
 })();
 </script>
 
-</body>
-</html>
+</body></html>
