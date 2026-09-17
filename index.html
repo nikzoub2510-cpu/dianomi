@@ -2465,6 +2465,12 @@
     renderCodeList();
     renderCustomerNameDatalist();
     updateRoleUI();
+    // keep the role-picker's driver list live: without this, a driver
+    // picked up by Firestore *after* the picker was already shown (the
+    // common case on first load) never appears until the picker is closed
+    // and reopened.
+    var roleOv = document.getElementById('roleOverlay');
+    if(roleOv && !roleOv.hidden) renderRoleOverlay();
     // keep the customers list live (e.g. right after a delete) while it's open
     var custModal = document.getElementById('customersModalOverlay');
     if(custModal && !custModal.hidden) renderCustomersList();
