@@ -368,6 +368,8 @@
   }
   .field textarea{ resize:vertical; min-height:56px; }
   .field-hint{ margin:6px 0 0; font-size:.75rem; color:var(--accent-strong); background:var(--accent-soft); padding:6px 10px; border-radius:8px; }
+  .pin-error{ margin:10px 0 0; font-size:.8rem; color:var(--st-cancel-fg); background:var(--st-cancel-bg); padding:8px 10px; border-radius:8px; }
+  #pinInput{ letter-spacing:.3em; font-family:var(--font-mono); font-size:1.1rem; text-align:center; }
   .quick-codes{ display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; }
   .quick-codes button{
     padding:4px 10px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2);
@@ -462,6 +464,11 @@
   .roster-color::-webkit-color-swatch-wrapper{ padding:0; border-radius:50%; }
   .roster-color::-webkit-color-swatch{ border:none; border-radius:50%; }
   .roster-color::-moz-color-swatch{ border:none; border-radius:50%; }
+  .roster-pin{
+    width:64px; flex:none; text-align:center; font-family:var(--font-mono);
+    padding:5px 6px; border-radius:8px; border:1px solid var(--border); background:var(--surface);
+  }
+  .roster-pin::placeholder{ color:var(--ink-faint); }
   .switch{ width:36px; height:20px; border-radius:999px; background:var(--border); position:relative; border:none; cursor:pointer; flex:none; }
   .switch[aria-checked="true"]{ background:var(--accent); }
   .switch::after{ content:''; position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:#fff; transition:transform .15s; }
@@ -469,6 +476,7 @@
   .add-roster{ display:flex; gap:8px; margin-top:12px; }
   .add-roster input{ flex:1; }
   .add-roster select{ width:120px; }
+  .add-roster input.roster-pin{ flex:0 0 64px; }
   .product-row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
   .product-row:last-child{ border-bottom:none; }
   .product-row .oi{ width:30px; height:30px; border-radius:8px; background:var(--surface-2); display:flex; align-items:center; justify-content:center; color:var(--ink-muted); flex:none; }
@@ -674,6 +682,27 @@
   </div>
 </div>
 
+<!-- pin overlay: asked right after picking a role, before it's actually granted -->
+<div class="modal-overlay" id="pinOverlay" hidden>
+  <div class="modal" style="max-width:320px;">
+    <div class="modal-head">
+      <h2 id="pinTitle">Κωδικός</h2>
+      <button type="button" class="icon-btn" id="pinClose"><svg class="icon"><use href="#ico-close"/></svg></button>
+    </div>
+    <form id="pinForm">
+      <div class="field">
+        <label for="pinInput">Πληκτρολόγησε τον κωδικό σου</label>
+        <input id="pinInput" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off" maxlength="6">
+      </div>
+      <p class="pin-error" id="pinError" hidden>Λάθος κωδικός. Δοκίμασε ξανά.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="pinCancel">Άκυρο</button>
+        <button type="submit" class="btn btn-primary">Είσοδος</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <!-- new/edit order modal -->
 <div class="modal-overlay" id="orderModalOverlay" hidden>
   <div class="modal">
@@ -875,6 +904,7 @@
     <form class="add-roster" id="rosterForm">
       <input id="r-name" placeholder="Όνομα (π.χ. Μανώλης ή ΦΟΡΤΗΓΟ Β)" required>
       <select id="r-type"><option value="person">Άτομο</option><option value="vehicle">Όχημα</option></select>
+      <input id="r-pin" class="roster-pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="PIN">
       <button class="btn btn-primary" type="submit">Προσθήκη</button>
     </form>
   </div>
@@ -1287,6 +1317,17 @@
   var VAPID_PUBLIC_KEY  = 'BER64an6PVtpchAJx7-inxqVKrGrCCo0BbpIFJHteplV_dfbLcA6r0Nntx8Vr2geQvf6YNZB3Gaa3kRUvuTs0rg';
   var VAPID_PRIVATE_KEY = 'drnXZkRnstgoVrr9VSg5QyVmuJWJfaGxGp3F3b6HvBs';
 
+  /* ---------------- role PIN protection ----------------
+     Same trust model as the VAPID key above and this app's already-open
+     Firestore rules: these PINs live in this client-side file (or, for each
+     driver, in their Firestore "deliverers" doc, editable from the roster
+     screen) so they aren't truly secret. They just stop someone from
+     casually tapping "Διοίκηση" or a driver's name and acting as them —
+     not a real security boundary. Change ADMIN_PIN here and re-publish to
+     change the admin code; driver codes are edited live in Διανομείς &
+     οχήματα → PIN, no code change needed. */
+  var ADMIN_PIN = '4925';
+
   function b64urlToBytes(s){
     s = String(s||'').replace(/-/g,'+').replace(/_/g,'/');
     while(s.length % 4) s += '=';
@@ -1586,8 +1627,12 @@
         '<span class="oi"><svg class="icon"><use href="#' + (d.type==='vehicle' ? 'ico-truck' : 'ico-user') + '"/></svg></span>' +
         '<span><span class="ot">' + esc(d.name) + '</span><br><span class="os">' + (d.type==='vehicle' ? 'Όχημα διανομής' : 'Διανομέας') + '</span></span>';
       btn.addEventListener('click', function(){
-        saveRole({type:'driver', name:d.name});
-        document.getElementById('roleOverlay').hidden = true;
+        function grant(){
+          saveRole({type:'driver', name:d.name});
+          document.getElementById('roleOverlay').hidden = true;
+        }
+        if(d.pin) requestPin('Κωδικός — ' + d.name, d.pin, grant);
+        else grant(); // no PIN set yet for this driver — set one from Διανομείς & οχήματα
       });
       box.appendChild(btn);
     });
@@ -2196,6 +2241,7 @@
         '<span class="name"></span>' +
         '<span class="rtype">'+(d.type==='vehicle'?'Όχημα':'Άτομο')+'</span>' +
         '<input type="color" class="roster-color" title="Χρώμα διανομέα" value="'+color+'">' +
+        '<input type="text" class="roster-pin" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="PIN" title="Κωδικός εισόδου" value="'+esc(d.pin||'')+'">' +
         '<button class="cash-btn icon-btn" title="Ταμείο"><svg class="icon"><use href="#ico-cash"/></svg></button>' +
         '<button class="switch" role="switch" aria-checked="'+(d.active!==false)+'" title="Ενεργός/η"></button>';
       row.querySelector('.name').textContent = d.name;
@@ -2204,6 +2250,9 @@
       });
       row.querySelector('.roster-color').addEventListener('change', function(e){
         updateDeliverer(d.id, {color: e.target.value});
+      });
+      row.querySelector('.roster-pin').addEventListener('change', function(e){
+        updateDeliverer(d.id, {pin: e.target.value.trim()});
       });
       row.querySelector('.cash-btn').addEventListener('click', function(){
         openCashTill(d.name);
@@ -2530,12 +2579,48 @@
   document.getElementById('confirmDialogCancel').addEventListener('click', closeConfirmDialog);
   document.getElementById('confirmDialogOverlay').addEventListener('click', function(e){ if(e.target === this) closeConfirmDialog(); });
 
+  /* ---------------- PIN prompt (role selection) ---------------- */
+  var pendingPin = null; // {expectedPin, onSuccess}
+  function requestPin(title, expectedPin, onSuccess){
+    pendingPin = {expectedPin: String(expectedPin), onSuccess: onSuccess};
+    document.getElementById('pinTitle').textContent = title;
+    document.getElementById('pinError').hidden = true;
+    var input = document.getElementById('pinInput');
+    input.value = '';
+    document.getElementById('pinOverlay').hidden = false;
+    setTimeout(function(){ input.focus(); }, 30);
+  }
+  function closePinDialog(){
+    document.getElementById('pinOverlay').hidden = true;
+    pendingPin = null;
+  }
+  document.getElementById('pinForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    if(!pendingPin) return;
+    var input = document.getElementById('pinInput');
+    var val = input.value.trim();
+    if(val && val === pendingPin.expectedPin){
+      var cb = pendingPin.onSuccess;
+      pendingPin = null;
+      document.getElementById('pinOverlay').hidden = true;
+      cb();
+    } else {
+      document.getElementById('pinError').hidden = false;
+      input.value = '';
+      input.focus();
+    }
+  });
+  document.getElementById('pinCancel').addEventListener('click', closePinDialog);
+  document.getElementById('pinClose').addEventListener('click', closePinDialog);
+  document.getElementById('pinOverlay').addEventListener('click', function(e){ if(e.target === this) closePinDialog(); });
+
   // Esc steps back one layer at a time: the topmost open dialog/modal closes
   // first (e.g. a confirmation on top of the order form closes without
   // touching the form behind it), then a second Esc closes the next one down.
   document.addEventListener('keydown', function(e){
     if(e.key !== 'Escape') return;
     var steps = [
+      {id: 'pinOverlay', action: closePinDialog},
       {id: 'confirmDialogOverlay', action: closeConfirmDialog},
       {id: 'confirmCustomerOverlay', action: function(){ document.getElementById('confirmCustomerNo').click(); }},
       {id: 'customerFormOverlay', action: function(){ document.getElementById('customerFormOverlay').hidden = true; }},
@@ -2878,9 +2963,13 @@
     e.preventDefault();
     var name = document.getElementById('r-name').value.trim();
     var type = document.getElementById('r-type').value;
+    var pin = document.getElementById('r-pin').value.trim();
     if(!name) return;
-    createDeliverer({name:name, type:type, active:true, color:nextPaletteColor(), createdAt:new Date().toISOString()});
+    var data = {name:name, type:type, active:true, color:nextPaletteColor(), createdAt:new Date().toISOString()};
+    if(pin) data.pin = pin;
+    createDeliverer(data);
     document.getElementById('r-name').value = '';
+    document.getElementById('r-pin').value = '';
     renderRoster();
   });
 
@@ -2974,8 +3063,10 @@
     document.getElementById('roleOverlay').hidden = false;
   });
   document.querySelector('[data-role-admin]').addEventListener('click', function(){
-    saveRole({type:'admin'});
-    document.getElementById('roleOverlay').hidden = true;
+    requestPin('Κωδικός Διοίκησης', ADMIN_PIN, function(){
+      saveRole({type:'admin'});
+      document.getElementById('roleOverlay').hidden = true;
+    });
   });
 
   // tabs
