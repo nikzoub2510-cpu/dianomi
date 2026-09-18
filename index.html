@@ -779,6 +779,7 @@
         <div class="field span2">
           <label for="f-customer">Πελάτης *</label>
           <input id="f-customer" list="customerNameList" required autocomplete="off">
+          <div class="phone-suggest" id="nameSuggest" hidden></div>
           <datalist id="customerNameList"></datalist>
         </div>
         <div class="field">
@@ -2571,6 +2572,7 @@
     form.reset();
     document.getElementById('custHint').hidden = true;
     document.getElementById('phoneSuggest').hidden = true;
+    document.getElementById('nameSuggest').hidden = true;
     document.getElementById('f-id').value = existing ? existing.id : '';
     document.getElementById('orderModalTitle').textContent = existing ? 'Επεξεργασία παραγγελίας' : 'Νέα παραγγελία';
     renderDelivererFormSelect();
@@ -2972,23 +2974,81 @@
   });
 
   // secondary convenience: typing a known name (e.g. phone not at hand)
-  // fills in phone/address too, as long as they're still blank.
+  // offers matching customers to pick from — it never auto-fills on its
+  // own. An earlier version applied the first exact name match on every
+  // keystroke, which could silently hijack the field (and yank focus over
+  // to the items list mid-word) whenever the text being typed happened to
+  // pass through another customer's full, shorter name along the way.
+  // Now nothing is filled in until staff actually pick a suggestion.
+  var nameSuggestIndex = -1;
+
+  function updateNameSuggestHighlight(){
+    var box = document.getElementById('nameSuggest');
+    Array.from(box.children).forEach(function(btn, i){
+      btn.classList.toggle('ps-active', i === nameSuggestIndex);
+    });
+  }
+
+  function renderNameSuggestions(matches){
+    var box = document.getElementById('nameSuggest');
+    box.innerHTML = '';
+    nameSuggestIndex = -1;
+    matches.slice(0, 6).forEach(function(c){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.tabIndex = -1;
+      var metaBits = [];
+      if(c.address) metaBits.push(c.address);
+      if(c.floor) metaBits.push(c.floor);
+      btn.innerHTML = '<div class="ps-name"></div><div class="ps-meta"><span class="ps-phone"></span>' + (metaBits.length ? ' · <span class="ps-addr"></span>' : '') + '</div>';
+      btn.querySelector('.ps-name').textContent = c.name;
+      btn.querySelector('.ps-phone').textContent = c.phone || '';
+      var addrSpan = btn.querySelector('.ps-addr'); if(addrSpan) addrSpan.textContent = metaBits.join(' · ');
+      btn.addEventListener('click', function(){
+        applyCustomerMatch(c);
+        box.hidden = true;
+        nameSuggestIndex = -1;
+      });
+      box.appendChild(btn);
+    });
+    box.hidden = matches.length === 0;
+  }
+
   document.getElementById('f-customer').addEventListener('input', function(){
     var phoneEl = document.getElementById('f-phone');
-    if(phoneEl.value) return; // phone already drives the match
-    var hint = document.getElementById('custHint');
-    var match = findCustomerByName(this.value);
-    if(!match){ hint.hidden = true; return; }
-    var addrEl = document.getElementById('f-address');
-    var floorEl = document.getElementById('f-floor');
-    if(match.phone) phoneEl.value = match.phone;
-    if(match.address && !addrEl.value) addrEl.value = match.address;
-    if(match.floor && !floorEl.value) floorEl.value = match.floor;
-    var bits = [];
-    if(match.address) bits.push(match.address);
-    if(match.notes) bits.push('«' + match.notes + '»');
-    hint.textContent = 'Γνωστός πελάτης' + (bits.length ? ' — ' + bits.join(' · ') : '');
-    hint.hidden = !bits.length && !match.phone;
+    var box = document.getElementById('nameSuggest');
+    if(phoneEl.value){ box.hidden = true; nameSuggestIndex = -1; return; } // phone already drives the match
+    var qText = this.value.trim().toLowerCase();
+    if(qText.length < 2){ box.hidden = true; nameSuggestIndex = -1; return; }
+    var matches = customers.filter(function(c){ return String(c.name||'').toLowerCase().indexOf(qText) !== -1; });
+    renderNameSuggestions(matches);
+  });
+
+  // same arrow/Enter/Escape handling as the phone field's suggestion list.
+  document.getElementById('f-customer').addEventListener('keydown', function(e){
+    var box = document.getElementById('nameSuggest');
+    var items = box.hidden ? [] : Array.prototype.slice.call(box.children);
+    if(!items.length) return;
+    if(e.key === 'Escape'){
+      e.preventDefault();
+      e.stopPropagation();
+      box.hidden = true;
+      nameSuggestIndex = -1;
+      return;
+    }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(e.key === 'ArrowDown'){ nameSuggestIndex = (nameSuggestIndex + 1) % items.length; }
+      else { nameSuggestIndex = (nameSuggestIndex - 1 + items.length) % items.length; }
+      updateNameSuggestHighlight();
+      items[nameSuggestIndex].scrollIntoView({block: 'nearest'});
+      return;
+    }
+    if(e.key === 'Enter' && nameSuggestIndex >= 0 && nameSuggestIndex < items.length){
+      e.preventDefault();
+      e.stopPropagation();
+      items[nameSuggestIndex].click();
+    }
   });
 
   // customers modal
