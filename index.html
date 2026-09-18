@@ -1581,6 +1581,7 @@
     var pushBtn = document.getElementById('pushBtn');
     var mineToggle = document.getElementById('mineToggle');
     var delFilter = document.getElementById('delivererFilterSelect');
+    var customersBtn = document.getElementById('customersBtn');
     if(!role){
       badgeText.textContent = 'Επιλογή…';
       rosterBtn.hidden = true;
@@ -1599,6 +1600,7 @@
       pushBtn.hidden = true;
       mineToggle.hidden = true;
       delFilter.hidden = false;
+      customersBtn.hidden = false;
       populateDelivererFilterOptions();
     } else {
       badgeText.textContent = role.name;
@@ -1609,6 +1611,13 @@
       mineToggle.hidden = false;
       mineToggle.setAttribute('aria-pressed', String(!!filters.mineOnly));
       delFilter.hidden = true;
+      // Drivers should not have access to the standalone customer database
+      // screen (name/phone/address/notes for every customer). Their own
+      // order cards still show the relevant customer's info and stored
+      // notes (see relatedCustomer in the print/order rendering code) since
+      // that's needed to complete a delivery — only the full "Πελάτες"
+      // directory button is hidden.
+      customersBtn.hidden = true;
       refreshPushBtnState();
     }
   }
