@@ -284,35 +284,38 @@
   }
   .order-row:last-child .row-sub{ border-bottom:none; }
 
-  /* ---- mobile: compact 2-line collapsed card, full detail on tap ----
-     Only the customer name, amount, relative time and area stay visible by
-     default, laid out as a tidy 2-column / 2-row grid (name+amount on the
-     first line, time+area on the second). Every other field — items,
-     payment, address, phone, status, deliverer/actions, notes — lives in
-     its own explicit grid row further down and is display:none until the
-     card gets the .expanded class (toggled by tapping it anywhere except an
-     actual control). expandedOrderIds (see top of script) remembers which
-     cards are open across the live onSnapshot re-renders. */
+  /* ---- mobile: compact 3-line collapsed card, full detail on tap ----
+     The customer name, amount, address, relative time and area stay visible
+     by default, laid out as a tidy 2-column grid: a flexible left column for
+     text and a FIXED-width right column for amount/area, so those two line
+     up at the same right edge from one card to the next, like a real table
+     column, instead of hugging whatever width that row's own content needs.
+     Everything else — items, payment, phone, status, deliverer/actions,
+     notes — lives in its own explicit grid row further down and is
+     display:none until the card gets the .expanded class (toggled by
+     tapping it anywhere except an actual control). expandedOrderIds (see
+     top of script) remembers which cards are open across the live
+     onSnapshot re-renders. */
   @media (max-width:900px){
     .order-grid{ display:flex; flex-direction:column; background:none; border:none; padding:0; }
     .order-row{
       position:relative;
       display:grid;
-      grid-template-columns: 1fr auto;
-      column-gap:10px; row-gap:2px;
+      grid-template-columns: 1fr 92px;
+      column-gap:10px; row-gap:3px;
       background:var(--surface); border:1px solid var(--border); border-radius:9px;
-      padding:6px 28px 6px 11px; margin-bottom:3px;
+      padding:7px 28px 7px 11px; margin-bottom:3px;
       cursor:pointer;
     }
     .order-row .cell{ padding:0; min-width:0; }
     .order-row .cell-customer{ grid-row:1; grid-column:1; font-size:.86rem; align-self:center; }
     .order-row .cell-amount{ grid-row:1; grid-column:2; justify-self:end; align-self:center; }
     .order-row .row-amount{ padding:2px 9px; font-size:.72rem; }
-    .order-row .cell-time{ grid-row:2; grid-column:1; align-self:center; font-size:.66rem; }
-    .order-row .cell-area{ grid-row:2; grid-column:2; justify-self:end; align-self:center; font-size:.66rem; }
+    .order-row .cell-address{ grid-row:2; grid-column:1/-1; font-size:.7rem; }
+    .order-row .cell-time{ grid-row:3; grid-column:1; align-self:center; font-size:.66rem; }
+    .order-row .cell-area{ grid-row:3; grid-column:2; justify-self:end; align-self:center; font-size:.66rem; }
     .order-row .cell-items,
     .order-row .cell-payment,
-    .order-row .cell-address,
     .order-row .cell-phone,
     .order-row .cell-status,
     .order-row .cell-deliverer,
@@ -320,9 +323,8 @@
     .order-row .row-sub{
       display:none;
     }
-    .order-row.expanded .cell-items{ display:flex; grid-row:3; grid-column:1/-1; padding-top:6px; }
-    .order-row.expanded .cell-payment{ display:flex; grid-row:4; grid-column:1/-1; }
-    .order-row.expanded .cell-address{ display:flex; grid-row:5; grid-column:1/-1; }
+    .order-row.expanded .cell-items{ display:flex; grid-row:4; grid-column:1/-1; padding-top:6px; }
+    .order-row.expanded .cell-payment{ display:flex; grid-row:5; grid-column:1/-1; }
     .order-row.expanded .cell-phone{ display:flex; grid-row:6; grid-column:1/-1; }
     .order-row.expanded .cell-status{ display:flex; grid-row:7; grid-column:1/-1; }
     .order-row.expanded .cell-deliverer{ display:flex; grid-row:8; grid-column:1/-1; }
@@ -331,7 +333,7 @@
       display:block; grid-row:10; grid-column:1/-1; border-bottom:none; border-top:1px solid var(--border);
       padding-top:5px; margin-top:2px;
     }
-    .order-row.expanded > .cell:not(.cell-customer):not(.cell-amount):not(.cell-time):not(.cell-area){
+    .order-row.expanded > .cell:not(.cell-customer):not(.cell-amount):not(.cell-time):not(.cell-area):not(.cell-address){
       padding:4px 0;
     }
     /* tap-to-expand chevron, purely decorative — only ever painted on the
