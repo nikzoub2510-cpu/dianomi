@@ -212,7 +212,7 @@
      from the box tree and its cells become direct grid children. */
   .order-grid{
     display:grid;
-    grid-template-columns: 76px 150px 60px 200px 90px 110px 220px 130px 140px 96px;
+    grid-template-columns: 76px 150px 60px 200px 90px 110px 220px 120px 130px 140px 96px;
     column-gap:10px; row-gap:0;
     /* top-align (not center) so a row with many wrapped items — tall — doesn't
        leave its other fields (customer, amount, status, ...) floating in the
@@ -262,6 +262,13 @@
     font-weight:700; white-space:nowrap;
   }
   .cell-address svg{ width:.8em; height:.8em; flex:none; }
+  .cell-phone{
+    display:flex; align-items:center; justify-content:flex-start; gap:3px; font-size:.72rem; color:var(--ink-muted);
+    font-weight:700; white-space:nowrap;
+  }
+  .cell-phone svg{ width:.8em; height:.8em; flex:none; }
+  .cell-phone a{ color:inherit; text-decoration:none; }
+  .cell-phone a:hover{ text-decoration:underline; }
   .cell-status, .cell-deliverer{ display:flex; justify-content:flex-start; }
   .cell-actions{ display:flex; justify-content:flex-start; gap:2px; }
   .cell-actions .icon-btn{ width:23px; height:23px; border-radius:6px; }
@@ -277,14 +284,63 @@
   }
   .order-row:last-child .row-sub{ border-bottom:none; }
 
+  /* ---- mobile: compact 2-line collapsed card, full detail on tap ----
+     Only the customer name, amount, relative time and area stay visible by
+     default, laid out as a tidy 2-column / 2-row grid (name+amount on the
+     first line, time+area on the second). Every other field — items,
+     payment, address, phone, status, deliverer/actions, notes — lives in
+     its own explicit grid row further down and is display:none until the
+     card gets the .expanded class (toggled by tapping it anywhere except an
+     actual control). expandedOrderIds (see top of script) remembers which
+     cards are open across the live onSnapshot re-renders. */
   @media (max-width:900px){
     .order-grid{ display:flex; flex-direction:column; background:none; border:none; padding:0; }
-    .order-row{ display:flex; flex-direction:column; gap:1px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:7px 10px; margin-bottom:5px; }
-    .order-row .row-sub{ border-bottom:none; text-align:left; }
-    .order-row > .cell:first-child{ order:-1; }
-    .order-row{ flex-wrap:wrap; }
-    .order-row .cell{ display:inline-flex; align-items:center; text-align:left; justify-content:flex-start; padding:2px 0; width:auto; }
-    .order-row .cell-time{ width:100%; text-align:left; justify-content:flex-start; }
+    .order-row{
+      position:relative;
+      display:grid;
+      grid-template-columns: 1fr auto;
+      column-gap:10px; row-gap:2px;
+      background:var(--surface); border:1px solid var(--border); border-radius:9px;
+      padding:8px 30px 8px 12px; margin-bottom:5px;
+      cursor:pointer;
+    }
+    .order-row .cell{ padding:0; min-width:0; }
+    .order-row .cell-customer{ grid-row:1; grid-column:1; font-size:.86rem; align-self:center; }
+    .order-row .cell-amount{ grid-row:1; grid-column:2; justify-self:end; align-self:center; }
+    .order-row .row-amount{ padding:2px 9px; font-size:.72rem; }
+    .order-row .cell-time{ grid-row:2; grid-column:1; align-self:center; font-size:.66rem; }
+    .order-row .cell-area{ grid-row:2; grid-column:2; justify-self:end; align-self:center; font-size:.66rem; }
+    .order-row .cell-items,
+    .order-row .cell-payment,
+    .order-row .cell-address,
+    .order-row .cell-phone,
+    .order-row .cell-status,
+    .order-row .cell-deliverer,
+    .order-row .cell-actions,
+    .order-row .row-sub{
+      display:none;
+    }
+    .order-row.expanded .cell-items{ display:flex; grid-row:3; grid-column:1/-1; padding-top:6px; }
+    .order-row.expanded .cell-payment{ display:flex; grid-row:4; grid-column:1/-1; }
+    .order-row.expanded .cell-address{ display:flex; grid-row:5; grid-column:1/-1; }
+    .order-row.expanded .cell-phone{ display:flex; grid-row:6; grid-column:1/-1; }
+    .order-row.expanded .cell-status{ display:flex; grid-row:7; grid-column:1/-1; }
+    .order-row.expanded .cell-deliverer{ display:flex; grid-row:8; grid-column:1/-1; }
+    .order-row.expanded .cell-actions{ display:flex; grid-row:9; grid-column:1/-1; }
+    .order-row.expanded .row-sub{
+      display:block; grid-row:10; grid-column:1/-1; border-bottom:none; border-top:1px solid var(--border);
+      padding-top:5px; margin-top:2px;
+    }
+    .order-row.expanded > .cell:not(.cell-customer):not(.cell-amount):not(.cell-time):not(.cell-area){
+      padding:4px 0;
+    }
+    /* tap-to-expand chevron, purely decorative — only ever painted on the
+       mobile grid layout, never on the desktop display:contents rows */
+    .order-row::after{
+      content:'▾'; position:absolute; right:10px; top:8px; font-size:.7rem; color:var(--ink-faint);
+      transform:rotate(0deg); transition:transform .15s ease;
+    }
+    .order-row.expanded::after{ transform:rotate(180deg); }
   }
 
   .pill{ display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:999px; font-size:.66rem; font-weight:600; white-space:nowrap; flex:none; }
@@ -1043,6 +1099,7 @@
   var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
   var customerSearch = '';
   var knownCodes = new Set();
+  var expandedOrderIds = new Set(); // order ids whose mobile card is tapped open — persists across onSnapshot re-renders
 
   var localSeq = 1;
 
@@ -1737,7 +1794,7 @@
     var sm = STATUS_META[o.status] || {cls:'st-pending', short:o.status};
     var pm = PAYMENT_META[o.payment];
     var card = document.createElement('div');
-    card.className = 'order-row';
+    card.className = 'order-row' + (expandedOrderIds.has(o.id) ? ' expanded' : '');
 
     var canEditDetails = role && role.type === 'admin';
     var canTouchAssignment = role && (role.type === 'admin' || (role.type==='driver' && (!o.deliverer || o.deliverer===role.name)));
@@ -1773,6 +1830,7 @@
     html += '  <div class="cell cell-amount">'+(amountText ? '<span class="row-amount"></span>' : '')+'</div>';
     html += '  <div class="cell cell-payment">'+(o.payment ? '<span class="pill '+(pm?pm.cls:'pill-area')+'">'+esc(o.payment)+'</span>' : '')+'</div>';
     html += '  <div class="cell cell-address">'+(addressText ? '<svg class="icon"><use href="#ico-pin"/></svg><span></span>' : '')+'</div>';
+    html += '  <div class="cell cell-phone">'+(o.phone ? '<svg class="icon"><use href="#ico-phone"/></svg><a class="phone-link" href="tel:'+esc(normPhone(o.phone))+'"></a>' : '')+'</div>';
     html += '  <div class="cell cell-status">';
     if(canTouchStatus){
       html += '    <select class="pill-select status-select '+sm.cls+'"></select>';
@@ -1823,6 +1881,7 @@
     // fill text-content (escaped) fields
     if(customerCell) customerCell.textContent = o.customer || '(χωρίς όνομα)';
     var addressEl = card.querySelector('.cell-address span:last-child'); if(addressEl) addressEl.textContent = addressText;
+    var phoneEl = card.querySelector('.phone-link'); if(phoneEl) phoneEl.textContent = o.phone;
     var amountEl = card.querySelector('.row-amount'); if(amountEl) amountEl.textContent = amountText;
     var timeEl = card.querySelector('.cell-time'); if(timeEl) timeEl.textContent = fmtRelative(o.createdAt);
     var delNameEl = card.querySelector('.deliverer-name-val'); if(delNameEl) delNameEl.textContent = o.deliverer;
@@ -1886,6 +1945,18 @@
     });
     var printBtn = card.querySelector('.print-btn');
     if(printBtn) printBtn.addEventListener('click', function(){ printOrderReceipt(o); });
+
+    // mobile: tap the card to reveal the rest of its details (items, address,
+    // phone, payment, deliverer/actions, notes) — ignored on desktop, since
+    // .expanded only changes anything under the max-width:900px breakpoint.
+    // Taps on an actual control (select/button/link/input) inside the card
+    // are left alone so they keep doing their own thing.
+    card.addEventListener('click', function(e){
+      if(e.target.closest('select, button, a, input, textarea')) return;
+      var willExpand = !card.classList.contains('expanded');
+      if(willExpand) expandedOrderIds.add(o.id); else expandedOrderIds.delete(o.id);
+      card.classList.toggle('expanded', willExpand);
+    });
 
     return card;
   }
