@@ -1036,6 +1036,7 @@
   var orders = [];      // {id, ...fields}
   var deliverers = [];  // {id, name, type, active}
   var customers = [];   // {id, name, address, phone, notes}
+  var customersLoaded = false; // true once the first Firestore snapshot for customers has arrived
   var products = [];    // {id, name, price, active} — admin-defined "hot" quick-pick products for order items
   var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
@@ -2676,7 +2677,7 @@
     closeOrderModal();
   }
 
-  document.getElementById('orderForm').addEventListener('submit', function(e){
+  document.getElementById('orderForm').addEventListener('submit', async function(e){
     e.preventDefault();
     var id = document.getElementById('f-id').value;
     var items = collectItemsFromForm();
@@ -2700,6 +2701,16 @@
     };
     if(!data.customer){ return; }
     items.forEach(function(it){ if(it.code) knownCodes.add(it.code); });
+
+    // If the app was only just opened, the customers list may still be on
+    // its way from Firestore. Without this wait, submitting an order for
+    // an already-known customer right after loading can wrongly look like
+    // a brand-new customer (no match found yet) and create a duplicate
+    // record instead of reusing the existing one. Cap the wait at ~4s so a
+    // slow/offline connection still falls back to the old behaviour.
+    for(var waitTicks = 0; waitTicks < 40 && !customersLoaded; waitTicks++){
+      await new Promise(function(r){ setTimeout(r, 100); });
+    }
 
     var existing = findCustomerByPhone(data.phone) || findCustomerByName(data.customer);
     if(existing){
@@ -3183,6 +3194,7 @@
   function attachCustomersListener(){
     customersCol().orderBy('name','asc').limit(1000).onSnapshot(function(snap){
       customers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      customersLoaded = true;
       renderAll();
     }, showDbError);
   }
