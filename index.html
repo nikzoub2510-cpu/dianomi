@@ -3192,7 +3192,12 @@
     }, showDbError);
   }
   function attachCustomersListener(){
-    customersCol().orderBy('name','asc').limit(1000).onSnapshot(function(snap){
+    // No .limit() here: with 5000+ imported customers, capping this at
+    // e.g. 1000 silently dropped everything alphabetically past that cut
+    // -- so findCustomerByPhone/ByName could never see most real
+    // customers, and every new order for one of them looked "unknown"
+    // and created a duplicate record instead of matching the existing one.
+    customersCol().orderBy('name','asc').onSnapshot(function(snap){
       customers = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       customersLoaded = true;
       renderAll();
