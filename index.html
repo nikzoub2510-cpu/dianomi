@@ -1054,7 +1054,7 @@
       <h2>Backup σε Excel</h2>
       <button class="icon-btn" id="backupModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
     </div>
-    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες και τις κινήσεις του μαγαζιού της επιλεγμένης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Μαγαζί / Πωλήσεις / Έξοδα). Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες και τις κινήσεις του μαγαζιού της επιλεγμένης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Πωλήσεις / Έξοδα). Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
     <div class="field">
       <label for="backupDateInput">Ημερομηνία</label>
       <input type="date" id="backupDateInput">
@@ -1249,18 +1249,21 @@
   function uid(){ return 'local-' + (localSeq++) + '-' + Date.now(); }
 
   /* ---------------- Excel backup ----------------
-     Rebuilds one sheet per area (Πόλη / Έξω / Μαγαζί) for a single calendar
+     Rebuilds one sheet per area (Πόλη / Έξω) for a single calendar
      day, matching the columns of the paper/Excel log this replaces:
      Α/Α, Πελάτης, Κωδικός, Τεμάχια, Ποσό, Σημειώσεις, Διανομέας, Πληρωμή, Κατάσταση.
      "Day" is the order's createdAt date. A multi-item order keeps only its
      total (Ποσό) — Κωδικός/Τεμάχια are left blank for it, since one row can't
      represent several line items the way the original sheet's single-item
-     rows did. */
-  var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ', 'ΜΑΓΑΖΙ'];
+     rows did. There used to be a third "Μαγαζί" area sheet here for
+     Μαγαζί-pickup orders, but that order type was removed and the name now
+     belongs to the sales/expenses ledger below (its own Πωλήσεις/Έξοδα
+     sheets), so a separate area sheet for it would just be redundant. */
+  var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ'];
   var BACKUP_HEADER = ['Α/Α','Πελάτης','Κωδικός','Τεμάχια','Ποσό','Σημειώσεις','Διανομέας','Πληρωμή','Κατάσταση'];
   var SHOP_SALE_HEADER = ['Α/Α','Κωδικός','Ποσό'];
   var SHOP_EXPENSE_HEADER = ['Α/Α','Περιγραφή','Ποσό'];
-  /** Every order that a backup for this day covers, across all three areas —
+  /** Every order that a backup for this day covers, across both areas —
    *  the exact set the workbook rows come from, and (after the user
    *  confirms) the exact set that gets removed from the program. Μαγαζί
    *  ledger entries have no `area`, so they never match here — they get
