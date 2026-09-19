@@ -202,6 +202,45 @@
   }
   .search-box svg{ position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--ink-faint); width:.85em; height:.85em; }
 
+  /* ---------- Μαγαζί: shop sales/expenses ledger (separate from orders) ---------- */
+  .shop-section{ display:flex; flex-direction:column; gap:14px; }
+  .shop-form-card{
+    display:flex; flex-direction:column; gap:10px; padding:14px; border:1px solid var(--border);
+    border-radius:14px; background:var(--surface);
+  }
+  .shop-type-toggle .chip{ font-size:.8rem; padding:6px 14px; }
+  .shop-type-toggle .chip[data-shop-type="sale"][aria-pressed="true"]{ background:var(--st-done-bg); border-color:var(--st-done-fg); color:var(--st-done-fg); }
+  .shop-type-toggle .chip[data-shop-type="expense"][aria-pressed="true"]{ background:var(--st-cancel-bg); border-color:var(--st-cancel-fg); color:var(--st-cancel-fg); }
+  .shop-entry-form{ display:flex; flex-wrap:wrap; gap:8px; }
+  .shop-entry-form input{
+    padding:9px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface);
+    color:var(--ink); font-size:.85rem; flex:1 1 140px; min-width:0;
+  }
+  .shop-entry-form #shop-code{ flex:1 1 110px; max-width:150px; }
+  .shop-entry-form #shop-amount{ flex:1 1 110px; max-width:150px; }
+  .shop-entry-form .btn{ flex:0 0 auto; }
+  .shop-stats{ margin:0; }
+  .shop-stats .stat-tile.sale .n{ color:var(--st-done-fg); }
+  .shop-stats .stat-tile.expense .n{ color:var(--st-cancel-fg); }
+  .shop-list{ display:flex; flex-direction:column; gap:6px; }
+  .shop-entry-row{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border);
+    border-radius:12px; background:var(--surface);
+  }
+  .shop-entry-row .set{
+    display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:9px; flex:none;
+  }
+  .shop-entry-row.sale .set{ background:var(--st-done-bg); color:var(--st-done-fg); }
+  .shop-entry-row.expense .set{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+  .shop-entry-row .sd{ flex:1 1 auto; min-width:0; }
+  .shop-entry-row .sd .code{ font-family:var(--font-mono); font-weight:700; font-size:.78rem; color:var(--ink-muted); margin-right:6px; }
+  .shop-entry-row .sd .desc{ font-size:.88rem; }
+  .shop-entry-row .sd .meta{ font-size:.72rem; color:var(--ink-faint); margin-top:1px; }
+  .shop-entry-row .sa{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:.9rem; flex:none; }
+  .shop-entry-row.sale .sa{ color:var(--st-done-fg); }
+  .shop-entry-row.expense .sa{ color:var(--st-cancel-fg); }
+  .shop-entry-row .sdel{ flex:none; }
+
   /* ---------- order list & rows ----------
      #orderGrid is ONE shared CSS grid: every order contributes the same
      fixed sequence of cells (time, customer, area, items, amount, payment,
@@ -693,14 +732,14 @@
       <button class="tab" role="tab" data-section="active" aria-selected="true">Ενεργές</button>
       <button class="tab" role="tab" data-section="scheduled">Προγραμματισμένες</button>
       <button class="tab" role="tab" data-section="history">Ιστορικό</button>
+      <button class="tab" role="tab" data-section="shop" id="shopTab" hidden>Μαγαζί</button>
     </div>
 
-    <div class="filter-row">
+    <div class="filter-row" id="orderFilterRow">
       <div class="chip-group" id="areaChips">
         <button class="chip" data-area="ALL" aria-pressed="true">Όλες</button>
         <button class="chip" data-area="ΠΟΛΗ" aria-pressed="false"><svg class="icon"><use href="#ico-city"/></svg> Πόλη</button>
         <button class="chip" data-area="ΕΞΩ" aria-pressed="false"><svg class="icon"><use href="#ico-road"/></svg> Έξω</button>
-        <button class="chip" data-area="ΜΑΓΑΖΙ" aria-pressed="false"><svg class="icon"><use href="#ico-store"/></svg> Μαγαζί</button>
       </div>
       <button class="chip mine-toggle" id="mineToggle" aria-pressed="false" hidden>Μόνο δικές μου</button>
       <select class="deliverer-filter-select" id="delivererFilterSelect" hidden>
@@ -715,6 +754,28 @@
   </div>
 
   <div class="order-grid" id="orderGrid"></div>
+
+  <!-- Μαγαζί: the shop's own sales/expenses ledger. Deliberately separate
+       from the order grid above (own tab, own Firestore collection) since
+       these entries aren't deliveries — no customer, address or driver —
+       just a running record of what the shop sold and spent, for admin
+       bookkeeping only. -->
+  <div class="shop-section" id="shopSection" hidden>
+    <div class="shop-form-card">
+      <div class="chip-group shop-type-toggle" id="shopTypeToggle">
+        <button type="button" class="chip" data-shop-type="sale" aria-pressed="true"><svg class="icon"><use href="#ico-store"/></svg> Πώληση</button>
+        <button type="button" class="chip" data-shop-type="expense" aria-pressed="false"><svg class="icon"><use href="#ico-cash"/></svg> Έξοδο</button>
+      </div>
+      <form class="shop-entry-form" id="shopEntryForm">
+        <input type="text" id="shop-code" placeholder="Κωδικός" autocomplete="off">
+        <input type="text" id="shop-desc" placeholder="Περιγραφή" autocomplete="off" required>
+        <input type="text" id="shop-amount" class="amount-input" inputmode="decimal" placeholder="Ποσό €" required>
+        <button class="btn btn-primary" type="submit">Προσθήκη</button>
+      </form>
+    </div>
+    <div class="stats shop-stats" id="shopStats"></div>
+    <div class="shop-list" id="shopList"></div>
+  </div>
 </div>
 
 <button class="fab" id="newOrderFab"><svg viewBox="0 0 24 24"><use href="#ico-plus"/></svg> Νέα παραγγελία</button>
@@ -789,7 +850,6 @@
           <select id="f-area" required>
             <option value="ΠΟΛΗ">Πόλη</option>
             <option value="ΕΞΩ">Έξω</option>
-            <option value="ΜΑΓΑΖΙ">Μαγαζί (παραλαβή)</option>
           </select>
         </div>
         <div class="field">
@@ -981,7 +1041,7 @@
     <div id="productsList"></div>
     <form class="add-product" id="productsForm">
       <input class="p-name" id="p-name" placeholder="Προϊόν (π.χ. Φιάλη 10κ)" required>
-      <input class="p-price" id="p-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Τιμή €">
+      <input class="p-price amount-input" id="p-price" type="text" inputmode="decimal" placeholder="Τιμή €">
       <button class="btn btn-primary" type="submit">Προσθήκη</button>
     </form>
   </div>
@@ -1097,6 +1157,7 @@
   var customers = [];   // {id, name, address, phone, notes}
   var customersLoaded = false; // true once the first Firestore snapshot for customers has arrived
   var products = [];    // {id, name, price, active} — admin-defined "hot" quick-pick products for order items
+  var shopEntries = []; // {id, type:'sale'|'expense', code, description, amount, createdAt, createdBy} — Μαγαζί ledger, separate from orders
   var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
   var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
@@ -1121,6 +1182,31 @@
     if(isNaN(v)) return '';
     return v.toLocaleString('el-GR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
   }
+  // Amount fields (order items, product prices, shop entries) are plain
+  // text inputs marked class="amount-input" rather than type="number" —
+  // a native number input silently rejects ',' as an invalid character,
+  // so someone typing "12,50" on a Greek keyboard/numpad would end up
+  // with "1250". parseAmount() accepts either ',' or '.' as the decimal
+  // separator; the sanitizer below keeps only one separator as they type.
+  function parseAmount(raw){
+    if(raw === null || raw === undefined) return null;
+    var s = String(raw).trim();
+    if(!s) return null;
+    s = s.replace(',', '.');
+    var n = parseFloat(s);
+    return isNaN(n) ? null : n;
+  }
+  document.addEventListener('input', function(e){
+    var el = e.target;
+    if(!el.classList || !el.classList.contains('amount-input')) return;
+    var v = el.value;
+    var cleaned = v.replace(/[^0-9.,]/g, '');
+    var lastSepPos = Math.max(cleaned.lastIndexOf('.'), cleaned.lastIndexOf(','));
+    if(lastSepPos !== -1){
+      cleaned = cleaned.slice(0, lastSepPos).replace(/[.,]/g, '') + cleaned.slice(lastSepPos);
+    }
+    if(cleaned !== v) el.value = cleaned;
+  });
   function fmtRelative(iso){
     if(!iso) return '';
     var d = new Date(iso), now = new Date();
@@ -1216,6 +1302,7 @@
   function deliverersCol(){ return db.collection('deliverers'); }
   function customersCol(){ return db.collection('customers'); }
   function productsCol(){ return db.collection('products'); }
+  function shopEntriesCol(){ return db.collection('shopEntries'); }
 
   function createOrder(data){
     if(offline){
@@ -1296,6 +1383,23 @@
       return Promise.resolve();
     }
     return db.doc('products/'+id).delete();
+  }
+  function createShopEntry(data){
+    if(offline){
+      var s = Object.assign({id:uid()}, data);
+      shopEntries.unshift(s);
+      renderAll();
+      return Promise.resolve();
+    }
+    return shopEntriesCol().add(data);
+  }
+  function deleteShopEntry(id){
+    if(offline){
+      shopEntries = shopEntries.filter(function(x){ return x.id!==id; });
+      renderAll();
+      return Promise.resolve();
+    }
+    return db.doc('shopEntries/'+id).delete();
   }
   /** Products currently shown as quick-picks on order item rows. */
   function activeProducts(){
@@ -1643,6 +1747,7 @@
     var mineToggle = document.getElementById('mineToggle');
     var delFilter = document.getElementById('delivererFilterSelect');
     var customersBtn = document.getElementById('customersBtn');
+    var shopTab = document.getElementById('shopTab');
     if(!role){
       badgeText.textContent = 'Επιλογή…';
       rosterBtn.hidden = true;
@@ -1651,6 +1756,7 @@
       pushBtn.hidden = true;
       mineToggle.hidden = true;
       delFilter.hidden = true;
+      shopTab.hidden = true;
       return;
     }
     if(role.type === 'admin'){
@@ -1662,6 +1768,7 @@
       mineToggle.hidden = true;
       delFilter.hidden = false;
       customersBtn.hidden = false;
+      shopTab.hidden = false;
       populateDelivererFilterOptions();
     } else {
       badgeText.textContent = role.name;
@@ -1679,6 +1786,19 @@
       // that's needed to complete a delivery — only the full "Πελάτες"
       // directory button is hidden.
       customersBtn.hidden = true;
+      // Μαγαζί is shop bookkeeping (sales/expenses), not delivery work —
+      // admin-only, same as products/roster/backup above. If a driver's
+      // role kicks in while that tab was somehow selected, fall back to
+      // the active-orders tab instead of leaving them on a hidden one.
+      if(shopTab.hidden === false || filters.section === 'shop'){
+        filters.section = 'active';
+        var activeTabBtn = document.querySelector('#sectionTabs .tab[data-section="active"]');
+        if(activeTabBtn){
+          document.querySelectorAll('#sectionTabs .tab').forEach(function(t){ t.setAttribute('aria-selected', t===activeTabBtn ? 'true':'false'); });
+        }
+        showSection('active');
+      }
+      shopTab.hidden = true;
       refreshPushBtnState();
     }
   }
@@ -2131,6 +2251,57 @@
     list.forEach(function(o){ grid.appendChild(renderOrderCard(o)); });
   }
 
+  /* ---------------- Μαγαζί: shop sales/expenses ledger ---------------- */
+  function renderShopStats(){
+    var box = document.getElementById('shopStats');
+    if(!box) return;
+    var dayNow = todayStr();
+    var todays = shopEntries.filter(function(e){ return isSameDay(e.createdAt, dayNow); });
+    var sales = todays.filter(function(e){ return e.type === 'sale'; }).reduce(function(sum,e){ return sum + (Number(e.amount)||0); }, 0);
+    var expenses = todays.filter(function(e){ return e.type === 'expense'; }).reduce(function(sum,e){ return sum + (Number(e.amount)||0); }, 0);
+    box.innerHTML =
+      '<div class="stat-tile sale"><div class="n">'+esc(fmtMoney(sales) || '0,00 €')+'</div><div class="l">Πωλήσεις σήμερα</div></div>' +
+      '<div class="stat-tile expense"><div class="n">'+esc(fmtMoney(expenses) || '0,00 €')+'</div><div class="l">Έξοδα σήμερα</div></div>' +
+      '<div class="stat-tile"><div class="n">'+esc(fmtMoney(sales-expenses) || '0,00 €')+'</div><div class="l">Υπόλοιπο σήμερα</div></div>';
+  }
+  function renderShop(){
+    renderShopStats();
+    var list = document.getElementById('shopList');
+    if(!list) return;
+    list.innerHTML = '';
+    if(shopEntries.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = '<svg viewBox="0 0 24 24"><use href="#ico-store"/></svg><h3>Καμία κίνηση ακόμη</h3><p>Πρόσθεσε μια πώληση ή ένα έξοδο του μαγαζιού παραπάνω.</p>';
+      list.appendChild(empty);
+      return;
+    }
+    var canDelete = role && role.type === 'admin';
+    shopEntries.forEach(function(en){
+      var row = document.createElement('div');
+      row.className = 'shop-entry-row ' + (en.type === 'expense' ? 'expense' : 'sale');
+      row.innerHTML =
+        '<span class="set"><svg class="icon"><use href="#'+(en.type==='expense'?'ico-cash':'ico-store')+'"/></svg></span>' +
+        '<div class="sd">' +
+          '<span class="code"></span><span class="desc"></span>' +
+          '<div class="meta"></div>' +
+        '</div>' +
+        '<div class="sa"></div>' +
+        (canDelete ? '<button type="button" class="icon-btn sdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>' : '');
+      if(en.code) row.querySelector('.code').textContent = en.code;
+      row.querySelector('.desc').textContent = en.description || '';
+      row.querySelector('.meta').textContent = (en.type === 'expense' ? 'Έξοδο' : 'Πώληση') + ' · ' + fmtRelative(en.createdAt) + (en.createdBy ? ' · ' + en.createdBy : '');
+      row.querySelector('.sa').textContent = (en.type === 'expense' ? '−' : '+') + (fmtMoney(en.amount) || '0,00 €');
+      var delBtn = row.querySelector('.sdel');
+      if(delBtn){
+        delBtn.addEventListener('click', function(){
+          showConfirm('Διαγραφή της εγγραφής «'+(en.code ? en.code+' — ' : '')+(en.description||'')+'»;', function(){ deleteShopEntry(en.id); });
+        });
+      }
+      list.appendChild(row);
+    });
+  }
+
   function renderCodeList(){
     var dl = document.getElementById('codeList');
     dl.innerHTML = '';
@@ -2145,7 +2316,7 @@
   function recomputeItemsTotal(){
     var sum = 0;
     document.querySelectorAll('#itemsList .item-amount').forEach(function(el){
-      sum += Number(el.value) || 0;
+      sum += parseAmount(el.value) || 0;
     });
     document.getElementById('itemsTotal').textContent = fmtMoney(sum) || '0,00 €';
   }
@@ -2159,7 +2330,7 @@
       '<div class="item-row-fields">' +
         '<input class="item-code" list="codeList" placeholder="Περιγραφή είδους" autocomplete="off">' +
         '<input class="item-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="0">' +
-        '<input class="item-amount" type="number" min="0" step="0.5" inputmode="decimal" placeholder="Ποσό €">' +
+        '<input class="item-amount amount-input" type="text" inputmode="decimal" placeholder="Ποσό €">' +
         '<button type="button" class="item-remove" tabindex="-1" title="Αφαίρεση γραμμής">&times;</button>' +
       '</div>' +
       '<div class="item-quick"></div>';
@@ -2267,7 +2438,7 @@
       return {
         code: code,
         qty: qtyRaw ? Number(qtyRaw) : null,
-        amount: amountRaw ? Number(amountRaw) : null
+        amount: parseAmount(amountRaw)
       };
     }).filter(function(it){ return it.code || it.qty || it.amount; });
   }
@@ -2360,15 +2531,14 @@
       row.innerHTML =
         '<span class="oi"><svg class="icon"><use href="#ico-tag"/></svg></span>' +
         '<span class="name"></span>' +
-        '<span class="price-field"><input type="number" class="p-price-input" min="0" step="0.01" inputmode="decimal" placeholder="Τιμή"><span>€</span></span>' +
+        '<span class="price-field"><input type="text" class="p-price-input amount-input" inputmode="decimal" placeholder="Τιμή"><span>€</span></span>' +
         '<button class="switch" role="switch" title="Ενεργό/η"></button>' +
         '<button class="icon-btn pdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
       row.querySelector('.name').textContent = p.name;
       var priceInput = row.querySelector('.p-price-input');
       priceInput.value = (p.price === 0 || p.price) ? p.price : '';
       priceInput.addEventListener('change', function(){
-        var v = priceInput.value ? Number(priceInput.value) : null;
-        updateProduct(p.id, {price: v});
+        updateProduct(p.id, {price: parseAmount(priceInput.value)});
       });
       var sw = row.querySelector('.switch');
       sw.setAttribute('aria-checked', String(p.active !== false));
@@ -2546,6 +2716,7 @@
   function renderAll(){
     renderStats();
     renderOrders();
+    renderShop();
     renderCodeList();
     renderCustomerNameDatalist();
     updateRoleUI();
@@ -2578,6 +2749,19 @@
     document.getElementById('f-id').value = existing ? existing.id : '';
     document.getElementById('orderModalTitle').textContent = existing ? 'Επεξεργασία παραγγελίας' : 'Νέα παραγγελία';
     renderDelivererFormSelect();
+    // Legacy orders may carry an area no longer offered here (e.g. the
+    // discontinued "Μαγαζί (παραλαβή)" pickup type) — without this, opening
+    // one for edit would show no area selected, and saving would silently
+    // blank out (or shift) its area even if only the driver/status changed.
+    var areaSel = document.getElementById('f-area');
+    Array.prototype.slice.call(areaSel.querySelectorAll('option[data-legacy="1"]')).forEach(function(o){ o.remove(); });
+    if(existing && existing.area && !Array.prototype.some.call(areaSel.options, function(o){ return o.value === existing.area; })){
+      var legacyOpt = document.createElement('option');
+      legacyOpt.value = existing.area;
+      legacyOpt.textContent = (AREA_META[existing.area] && AREA_META[existing.area].label) || existing.area;
+      legacyOpt.dataset.legacy = '1';
+      areaSel.appendChild(legacyOpt);
+    }
     if(existing){
       document.getElementById('f-customer').value = existing.customer || '';
       document.getElementById('f-area').value = existing.area || 'ΠΟΛΗ';
@@ -3145,10 +3329,43 @@
     var name = document.getElementById('p-name').value.trim();
     var priceRaw = document.getElementById('p-price').value;
     if(!name) return;
-    createProduct({name:name, price: priceRaw ? Number(priceRaw) : null, active:true, createdAt:new Date().toISOString()});
+    createProduct({name:name, price: parseAmount(priceRaw), active:true, createdAt:new Date().toISOString()});
     document.getElementById('p-name').value = '';
     document.getElementById('p-price').value = '';
     renderProducts();
+  });
+
+  // Μαγαζί: sales/expenses ledger entry form. "Κωδικός" only applies to a
+  // sale (an item code); an expense is just a description + amount, so the
+  // field hides for that type rather than being sent along unused.
+  var shopEntryType = 'sale';
+  document.getElementById('shopTypeToggle').addEventListener('click', function(e){
+    var btn = e.target.closest('.chip');
+    if(!btn) return;
+    shopEntryType = btn.dataset.shopType;
+    document.querySelectorAll('#shopTypeToggle .chip').forEach(function(c){ c.setAttribute('aria-pressed', c===btn ? 'true':'false'); });
+    document.getElementById('shop-code').hidden = shopEntryType === 'expense';
+  });
+  document.getElementById('shopEntryForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var codeEl = document.getElementById('shop-code');
+    var descEl = document.getElementById('shop-desc');
+    var amountEl = document.getElementById('shop-amount');
+    var desc = descEl.value.trim();
+    var amount = parseAmount(amountEl.value);
+    if(!desc || amount === null) return;
+    createShopEntry({
+      type: shopEntryType,
+      code: (shopEntryType === 'sale' && codeEl.value.trim()) ? codeEl.value.trim() : null,
+      description: desc,
+      amount: amount,
+      createdAt: new Date().toISOString(),
+      createdBy: role && role.type === 'admin' ? 'Διοίκηση' : (role ? role.name : null)
+    });
+    codeEl.value = '';
+    descEl.value = '';
+    amountEl.value = '';
+    descEl.focus();
   });
 
   // backup to excel
@@ -3230,12 +3447,26 @@
   });
 
   // tabs
+  // Ενεργές/Προγραμματισμένες/Ιστορικό all render into #orderGrid via
+  // filters.section; Μαγαζί is a different kind of record entirely (no
+  // customer/address/driver — just sales & expenses), so it gets its own
+  // container (#shopSection) that swaps in instead of the order grid and
+  // its area/search filter row, rather than being just another value of
+  // filters.section feeding the same renderOrders() path.
+  function showSection(section){
+    var isShop = section === 'shop';
+    document.getElementById('orderFilterRow').hidden = isShop;
+    document.getElementById('orderGrid').hidden = isShop;
+    document.getElementById('shopSection').hidden = !isShop;
+    if(isShop) renderShop();
+  }
   document.getElementById('sectionTabs').addEventListener('click', function(e){
     var btn = e.target.closest('.tab');
     if(!btn) return;
     document.querySelectorAll('#sectionTabs .tab').forEach(function(t){ t.setAttribute('aria-selected', t===btn ? 'true':'false'); });
     filters.section = btn.dataset.section;
-    renderOrders();
+    showSection(filters.section);
+    if(filters.section !== 'shop') renderOrders();
   });
 
   // area chips
@@ -3342,6 +3573,12 @@
       renderAll();
     }, showDbError);
   }
+  function attachShopEntriesListener(){
+    shopEntriesCol().orderBy('createdAt','desc').limit(500).onSnapshot(function(snap){
+      shopEntries = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      renderAll();
+    }, showDbError);
+  }
 
   function initFirebase(){
     if(typeof firebase === 'undefined' || !FIREBASE_CONFIG.projectId) return null;
@@ -3382,6 +3619,7 @@
       attachDeliverersListener();
       attachCustomersListener();
       attachProductsListener();
+      attachShopEntriesListener();
       return;
     }
 
@@ -3398,6 +3636,7 @@
         attachDeliverersListener();
         attachCustomersListener();
         attachProductsListener();
+        attachShopEntriesListener();
       }).catch(function(){
         offline = true;
         document.getElementById('offlineBanner').hidden = false;
