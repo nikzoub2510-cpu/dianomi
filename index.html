@@ -767,8 +767,8 @@
         <button type="button" class="chip" data-shop-type="expense" aria-pressed="false"><svg class="icon"><use href="#ico-cash"/></svg> Έξοδο</button>
       </div>
       <form class="shop-entry-form" id="shopEntryForm">
-        <input type="text" id="shop-code" placeholder="Κωδικός" autocomplete="off">
-        <input type="text" id="shop-desc" placeholder="Περιγραφή" autocomplete="off" required>
+        <input type="text" id="shop-code" placeholder="Κωδικός" autocomplete="off" required>
+        <input type="text" id="shop-desc" placeholder="Περιγραφή" autocomplete="off" hidden>
         <input type="text" id="shop-amount" class="amount-input" inputmode="decimal" placeholder="Ποσό €" required>
         <button class="btn btn-primary" type="submit">Προσθήκη</button>
       </form>
@@ -1054,7 +1054,7 @@
       <h2>Backup σε Excel</h2>
       <button class="icon-btn" id="backupModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
     </div>
-    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες της επιλεγμένης ημέρας σε αρχείο Excel, στη μορφή του υπάρχοντος αρχείου καταγραφής (φύλλα Πόλη / Έξω / Μαγαζί). Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν αυτές οι παραγγελίες από το πρόγραμμα.</p>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες και τις κινήσεις του μαγαζιού της επιλεγμένης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Μαγαζί / Πωλήσεις / Έξοδα). Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
     <div class="field">
       <label for="backupDateInput">Ημερομηνία</label>
       <input type="date" id="backupDateInput">
@@ -1157,7 +1157,18 @@
   var customers = [];   // {id, name, address, phone, notes}
   var customersLoaded = false; // true once the first Firestore snapshot for customers has arrived
   var products = [];    // {id, name, price, active} — admin-defined "hot" quick-pick products for order items
-  var shopEntries = []; // {id, type:'sale'|'expense', code, description, amount, createdAt, createdBy} — Μαγαζί ledger, separate from orders
+  // Μαγαζί ledger entries are stored as ordinary documents in the SAME
+  // "orders" collection (marked kind:'shop', shopType:'sale'|'expense')
+  // instead of a separate Firestore collection — a dedicated collection
+  // needs its own security rule added in the Firebase console before it's
+  // reachable at all, which isn't something this app can do for itself.
+  // Reusing "orders" means the ledger works immediately under the rules
+  // that already exist, at the cost of sharing that collection's 500-doc
+  // listener limit — acceptable since entries get exported and deleted
+  // regularly via the Excel backup, same as regular orders. getShopEntries()
+  // below is the single place that pulls them back out of `orders`; every
+  // other order-list function (getFilteredOrders, renderStats, the item-code
+  // datalist, the per-day backup) explicitly excludes kind==='shop'.
   var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
   var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
@@ -1247,11 +1258,21 @@
      rows did. */
   var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ', 'ΜΑΓΑΖΙ'];
   var BACKUP_HEADER = ['Α/Α','Πελάτης','Κωδικός','Τεμάχια','Ποσό','Σημειώσεις','Διανομέας','Πληρωμή','Κατάσταση'];
+  var SHOP_SALE_HEADER = ['Α/Α','Κωδικός','Ποσό'];
+  var SHOP_EXPENSE_HEADER = ['Α/Α','Περιγραφή','Ποσό'];
   /** Every order that a backup for this day covers, across all three areas —
    *  the exact set the workbook rows come from, and (after the user
-   *  confirms) the exact set that gets removed from the program. */
+   *  confirms) the exact set that gets removed from the program. Μαγαζί
+   *  ledger entries have no `area`, so they never match here — they get
+   *  their own Πωλήσεις/Έξοδα sheets and their own day-set below instead. */
   function ordersForBackup(dayStr){
     return orders.filter(function(o){ return BACKUP_AREAS.indexOf(o.area) !== -1 && isSameDay(o.createdAt, dayStr); });
+  }
+  /** The day's Μαγαζί ledger entries (sales and expenses together) — the
+   *  exact set that goes into the Πωλήσεις/Έξοδα sheets and, once the user
+   *  confirms, the exact set that gets permanently deleted afterwards. */
+  function shopEntriesForBackup(dayStr){
+    return getShopEntries().filter(function(e){ return isSameDay(e.createdAt, dayStr); });
   }
   function buildBackupWorkbook(dayStr){
     var wb = XLSX.utils.book_new();
@@ -1279,6 +1300,25 @@
       ws['!cols'] = [{wch:5},{wch:26},{wch:10},{wch:9},{wch:10},{wch:32},{wch:14},{wch:12},{wch:14}];
       XLSX.utils.book_append_sheet(wb, ws, area);
     });
+
+    var dayShop = shopEntriesForBackup(dayStr).slice().sort(function(a,b){ return new Date(a.createdAt) - new Date(b.createdAt); });
+
+    var saleRows = [SHOP_SALE_HEADER];
+    dayShop.filter(function(e){ return e.shopType === 'sale'; }).forEach(function(e, idx){
+      saleRows.push([idx + 1, e.code || '', e.amount || '']);
+    });
+    var wsSales = XLSX.utils.aoa_to_sheet(saleRows);
+    wsSales['!cols'] = [{wch:5},{wch:16},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, wsSales, 'Πωλήσεις');
+
+    var expenseRows = [SHOP_EXPENSE_HEADER];
+    dayShop.filter(function(e){ return e.shopType === 'expense'; }).forEach(function(e, idx){
+      expenseRows.push([idx + 1, e.description || '', e.amount || '']);
+    });
+    var wsExpenses = XLSX.utils.aoa_to_sheet(expenseRows);
+    wsExpenses['!cols'] = [{wch:5},{wch:32},{wch:10}];
+    XLSX.utils.book_append_sheet(wb, wsExpenses, 'Έξοδα');
+
     return wb;
   }
   function downloadBackupExcel(dayStr){
@@ -1302,7 +1342,9 @@
   function deliverersCol(){ return db.collection('deliverers'); }
   function customersCol(){ return db.collection('customers'); }
   function productsCol(){ return db.collection('products'); }
-  function shopEntriesCol(){ return db.collection('shopEntries'); }
+  /** Μαγαζί ledger rows live inside `orders` (see the var declaration above
+   *  for why) — this is the one place that pulls them back out. */
+  function getShopEntries(){ return orders.filter(function(o){ return o.kind === 'shop'; }); }
 
   function createOrder(data){
     if(offline){
@@ -1384,23 +1426,9 @@
     }
     return db.doc('products/'+id).delete();
   }
-  function createShopEntry(data){
-    if(offline){
-      var s = Object.assign({id:uid()}, data);
-      shopEntries.unshift(s);
-      renderAll();
-      return Promise.resolve();
-    }
-    return shopEntriesCol().add(data);
-  }
-  function deleteShopEntry(id){
-    if(offline){
-      shopEntries = shopEntries.filter(function(x){ return x.id!==id; });
-      renderAll();
-      return Promise.resolve();
-    }
-    return db.doc('shopEntries/'+id).delete();
-  }
+  // Μαγαζί ledger entries are created/deleted with createOrder()/deleteOrder()
+  // directly (see the `orders` var declaration above) — no separate
+  // create/delete pair needed here.
   /** Products currently shown as quick-picks on order item rows. */
   function activeProducts(){
     return products.filter(function(p){ return p.active !== false; })
@@ -1833,6 +1861,7 @@
   function getFilteredOrders(){
     var dayNow = todayStr();
     return orders.filter(function(o){
+      if(o.kind === 'shop') return false; // Μαγαζί ledger rows never show in the order feed
       if(filters.area !== 'ALL' && o.area !== filters.area) return false;
       if(filters.search){
         var q = filters.search.toLowerCase();
@@ -1879,7 +1908,8 @@
   function renderStats(){
     var box = document.getElementById('stats');
     var dayNow = todayStr();
-    var pool = filters.area === 'ALL' ? orders : orders.filter(function(o){ return o.area===filters.area; });
+    var realOrders = orders.filter(function(o){ return o.kind !== 'shop'; });
+    var pool = filters.area === 'ALL' ? realOrders : realOrders.filter(function(o){ return o.area===filters.area; });
     // Match the "Ενεργές" tab: an order scheduled for a future date doesn't
     // count as pending/in-transit today yet.
     var notFutureScheduled = function(o){ return !o.scheduledDate || o.scheduledDate <= dayNow; };
@@ -2256,9 +2286,9 @@
     var box = document.getElementById('shopStats');
     if(!box) return;
     var dayNow = todayStr();
-    var todays = shopEntries.filter(function(e){ return isSameDay(e.createdAt, dayNow); });
-    var sales = todays.filter(function(e){ return e.type === 'sale'; }).reduce(function(sum,e){ return sum + (Number(e.amount)||0); }, 0);
-    var expenses = todays.filter(function(e){ return e.type === 'expense'; }).reduce(function(sum,e){ return sum + (Number(e.amount)||0); }, 0);
+    var todays = getShopEntries().filter(function(e){ return isSameDay(e.createdAt, dayNow); });
+    var sales = todays.filter(function(e){ return e.shopType === 'sale'; }).reduce(function(sum,e){ return sum + (Number(e.amount)||0); }, 0);
+    var expenses = todays.filter(function(e){ return e.shopType === 'expense'; }).reduce(function(sum,e){ return sum + (Number(e.amount)||0); }, 0);
     box.innerHTML =
       '<div class="stat-tile sale"><div class="n">'+esc(fmtMoney(sales) || '0,00 €')+'</div><div class="l">Πωλήσεις σήμερα</div></div>' +
       '<div class="stat-tile expense"><div class="n">'+esc(fmtMoney(expenses) || '0,00 €')+'</div><div class="l">Έξοδα σήμερα</div></div>' +
@@ -2269,7 +2299,8 @@
     var list = document.getElementById('shopList');
     if(!list) return;
     list.innerHTML = '';
-    if(shopEntries.length === 0){
+    var entries = getShopEntries();
+    if(entries.length === 0){
       var empty = document.createElement('div');
       empty.className = 'empty-state';
       empty.innerHTML = '<svg viewBox="0 0 24 24"><use href="#ico-store"/></svg><h3>Καμία κίνηση ακόμη</h3><p>Πρόσθεσε μια πώληση ή ένα έξοδο του μαγαζιού παραπάνω.</p>';
@@ -2277,11 +2308,11 @@
       return;
     }
     var canDelete = role && role.type === 'admin';
-    shopEntries.forEach(function(en){
+    entries.forEach(function(en){
       var row = document.createElement('div');
-      row.className = 'shop-entry-row ' + (en.type === 'expense' ? 'expense' : 'sale');
+      row.className = 'shop-entry-row ' + (en.shopType === 'expense' ? 'expense' : 'sale');
       row.innerHTML =
-        '<span class="set"><svg class="icon"><use href="#'+(en.type==='expense'?'ico-cash':'ico-store')+'"/></svg></span>' +
+        '<span class="set"><svg class="icon"><use href="#'+(en.shopType==='expense'?'ico-cash':'ico-store')+'"/></svg></span>' +
         '<div class="sd">' +
           '<span class="code"></span><span class="desc"></span>' +
           '<div class="meta"></div>' +
@@ -2290,12 +2321,12 @@
         (canDelete ? '<button type="button" class="icon-btn sdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>' : '');
       if(en.code) row.querySelector('.code').textContent = en.code;
       row.querySelector('.desc').textContent = en.description || '';
-      row.querySelector('.meta').textContent = (en.type === 'expense' ? 'Έξοδο' : 'Πώληση') + ' · ' + fmtRelative(en.createdAt) + (en.createdBy ? ' · ' + en.createdBy : '');
-      row.querySelector('.sa').textContent = (en.type === 'expense' ? '−' : '+') + (fmtMoney(en.amount) || '0,00 €');
+      row.querySelector('.meta').textContent = (en.shopType === 'expense' ? 'Έξοδο' : 'Πώληση') + ' · ' + fmtRelative(en.createdAt) + (en.createdBy ? ' · ' + en.createdBy : '');
+      row.querySelector('.sa').textContent = (en.shopType === 'expense' ? '−' : '+') + (fmtMoney(en.amount) || '0,00 €');
       var delBtn = row.querySelector('.sdel');
       if(delBtn){
         delBtn.addEventListener('click', function(){
-          showConfirm('Διαγραφή της εγγραφής «'+(en.code ? en.code+' — ' : '')+(en.description||'')+'»;', function(){ deleteShopEntry(en.id); });
+          showConfirm('Διαγραφή της εγγραφής «'+(en.code || en.description || '')+'»;', function(){ deleteOrder(en.id); });
         });
       }
       list.appendChild(row);
@@ -3335,29 +3366,41 @@
     renderProducts();
   });
 
-  // Μαγαζί: sales/expenses ledger entry form. "Κωδικός" only applies to a
-  // sale (an item code); an expense is just a description + amount, so the
-  // field hides for that type rather than being sent along unused.
+  // Μαγαζί: sales/expenses ledger entry form. A sale is a code + amount (no
+  // description); an expense is a description + amount (no code) — the two
+  // fields swap places, each required only for the type it belongs to.
   var shopEntryType = 'sale';
   document.getElementById('shopTypeToggle').addEventListener('click', function(e){
     var btn = e.target.closest('.chip');
     if(!btn) return;
     shopEntryType = btn.dataset.shopType;
     document.querySelectorAll('#shopTypeToggle .chip').forEach(function(c){ c.setAttribute('aria-pressed', c===btn ? 'true':'false'); });
-    document.getElementById('shop-code').hidden = shopEntryType === 'expense';
+    var isSale = shopEntryType === 'sale';
+    var codeEl = document.getElementById('shop-code');
+    var descEl = document.getElementById('shop-desc');
+    codeEl.hidden = !isSale; codeEl.required = isSale;
+    descEl.hidden = isSale; descEl.required = !isSale;
   });
   document.getElementById('shopEntryForm').addEventListener('submit', function(e){
     e.preventDefault();
     var codeEl = document.getElementById('shop-code');
     var descEl = document.getElementById('shop-desc');
     var amountEl = document.getElementById('shop-amount');
-    var desc = descEl.value.trim();
     var amount = parseAmount(amountEl.value);
-    if(!desc || amount === null) return;
-    createShopEntry({
-      type: shopEntryType,
-      code: (shopEntryType === 'sale' && codeEl.value.trim()) ? codeEl.value.trim() : null,
-      description: desc,
+    var isSale = shopEntryType === 'sale';
+    var code = codeEl.value.trim();
+    var desc = descEl.value.trim();
+    if(amount === null) return;
+    if(isSale && !code) return;
+    if(!isSale && !desc) return;
+    // kind:'shop' keeps this out of the order feed/stats/backup areas (see
+    // getFilteredOrders, renderStats, ordersForBackup) — it's stored in the
+    // orders collection, not a real order (see the `orders` var comment).
+    createOrder({
+      kind: 'shop',
+      shopType: shopEntryType,
+      code: isSale ? code : null,
+      description: isSale ? null : desc,
       amount: amount,
       createdAt: new Date().toISOString(),
       createdBy: role && role.type === 'admin' ? 'Διοίκηση' : (role ? role.name : null)
@@ -3365,7 +3408,7 @@
     codeEl.value = '';
     descEl.value = '';
     amountEl.value = '';
-    descEl.focus();
+    (isSale ? codeEl : descEl).focus();
   });
 
   // backup to excel
@@ -3373,8 +3416,11 @@
     var dayStr = document.getElementById('backupDateInput').value;
     var hint = document.getElementById('backupCountHint');
     if(!dayStr){ hint.textContent = ''; return; }
-    var count = orders.filter(function(o){ return isSameDay(o.createdAt, dayStr); }).length;
-    hint.textContent = count + ' παραγγελί' + (count === 1 ? 'α' : 'ες') + ' αυτή την ημέρα.';
+    var count = orders.filter(function(o){ return o.kind !== 'shop' && isSameDay(o.createdAt, dayStr); }).length;
+    var shopCount = shopEntriesForBackup(dayStr).length;
+    var text = count + ' παραγγελί' + (count === 1 ? 'α' : 'ες') + ' αυτή την ημέρα';
+    if(shopCount) text += ', ' + shopCount + ' κίνησ' + (shopCount === 1 ? 'η μαγαζιού' : 'εις μαγαζιού');
+    hint.textContent = text + '.';
   }
   document.getElementById('backupBtn').addEventListener('click', function(){
     document.getElementById('backupDateInput').value = todayStr();
@@ -3394,12 +3440,19 @@
       return;
     }
     var dayOrders = ordersForBackup(dayStr);
+    var dayShop = shopEntriesForBackup(dayStr);
     downloadBackupExcel(dayStr);
     document.getElementById('backupModalOverlay').hidden = true;
-    if(dayOrders.length){
+    if(dayOrders.length || dayShop.length){
+      var parts = [];
+      if(dayOrders.length) parts.push(dayOrders.length + ' παραγγελί' + (dayOrders.length === 1 ? 'α' : 'ες'));
+      if(dayShop.length) parts.push(dayShop.length + ' κίνησ' + (dayShop.length === 1 ? 'η μαγαζιού' : 'εις μαγαζιού'));
       showConfirm(
-        'Έγινε η λήψη του αρχείου Excel. Να διαγραφούν οι ' + dayOrders.length + ' παραγγελί' + (dayOrders.length === 1 ? 'α' : 'ες') + ' αυτής της ημέρας από το πρόγραμμα;',
-        function(){ dayOrders.forEach(function(o){ deleteOrder(o.id); }); },
+        'Έγινε η λήψη του αρχείου Excel. Να διαγραφούν ' + parts.join(' και ') + ' αυτής της ημέρας από το πρόγραμμα;',
+        function(){
+          dayOrders.forEach(function(o){ deleteOrder(o.id); });
+          dayShop.forEach(function(e){ deleteOrder(e.id); });
+        },
         {yesLabel: 'Διαγραφή', danger: true}
       );
     }
@@ -3540,6 +3593,7 @@
     ordersCol().orderBy('createdAt','desc').limit(500).onSnapshot(function(snap){
       orders = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       orders.forEach(function(o){
+        if(o.kind === 'shop') return; // Μαγαζί ledger codes aren't delivery item codes
         if(o.items && o.items.length){ o.items.forEach(function(it){ if(it.code) knownCodes.add(it.code); }); }
         else if(o.code) knownCodes.add(o.code);
       });
@@ -3573,13 +3627,6 @@
       renderAll();
     }, showDbError);
   }
-  function attachShopEntriesListener(){
-    shopEntriesCol().orderBy('createdAt','desc').limit(500).onSnapshot(function(snap){
-      shopEntries = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
-      renderAll();
-    }, showDbError);
-  }
-
   function initFirebase(){
     if(typeof firebase === 'undefined' || !FIREBASE_CONFIG.projectId) return null;
     try{
@@ -3619,7 +3666,6 @@
       attachDeliverersListener();
       attachCustomersListener();
       attachProductsListener();
-      attachShopEntriesListener();
       return;
     }
 
@@ -3636,7 +3682,6 @@
         attachDeliverersListener();
         attachCustomersListener();
         attachProductsListener();
-        attachShopEntriesListener();
       }).catch(function(){
         offline = true;
         document.getElementById('offlineBanner').hidden = false;
