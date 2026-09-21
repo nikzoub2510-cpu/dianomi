@@ -1326,7 +1326,11 @@
   }
   function downloadBackupExcel(dayStr){
     var wb = buildBackupWorkbook(dayStr);
-    XLSX.writeFile(wb, 'ZGAS_' + dayStr + '.xlsx');
+    // compression:true forces SheetJS's DEFLATE writer instead of its default
+    // STORE (uncompressed) one — the STORE path has a buffer-length bug with
+    // heavy Greek text that silently truncates a worksheet's XML mid-tag,
+    // which Excel then reports as "unexpected end of input" needing repair.
+    XLSX.writeFile(wb, 'ZGAS_' + dayStr + '.xlsx', {compression: true});
   }
 
   function activeDeliverers(){ return deliverers.filter(function(d){ return d.active !== false; }); }
