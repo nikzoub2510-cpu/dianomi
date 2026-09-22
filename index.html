@@ -216,7 +216,12 @@
     padding:9px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface);
     color:var(--ink); font-size:.85rem; flex:1 1 140px; min-width:0;
   }
+  .shop-entry-form select{
+    padding:9px 12px; border-radius:10px; border:1px solid var(--border); background:var(--surface);
+    color:var(--ink); font-size:.85rem; flex:1 1 140px; min-width:0; font-family:inherit;
+  }
   .shop-entry-form #shop-code{ flex:1 1 110px; max-width:150px; }
+  .shop-entry-form #shop-payment{ flex:1 1 130px; max-width:170px; }
   .shop-entry-form #shop-amount{ flex:1 1 110px; max-width:150px; }
   .shop-entry-form .btn{ flex:0 0 auto; }
   .shop-stats{ margin:0; }
@@ -317,11 +322,22 @@
      multiple of the column count. */
   .row-sub{
     grid-column: 1 / -1;
-    font-size:.7rem; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    text-align:left; min-height:1px; padding:0 0 4px;
+    display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+    min-height:1px; padding:0 0 4px;
     border-bottom:1px solid var(--border);
   }
   .order-row:last-child .row-sub{ border-bottom:none; }
+  .row-sub-sched{ font-size:.7rem; color:var(--ink-faint); }
+  /* order notes: bold, larger, and boxed so they can't get missed while
+     scanning the collapsed list — unlike the rest of .row-sub, this is
+     never truncated, it just wraps and grows the row. */
+  .order-note{
+    display:flex; align-items:flex-start; gap:5px; max-width:100%; box-sizing:border-box;
+    font-size:.84rem; font-weight:700; line-height:1.35; color:var(--accent-strong);
+    background:var(--accent-soft); border:1px solid var(--accent-strong);
+    border-radius:8px; padding:5px 10px; white-space:normal;
+  }
+  .order-note svg{ flex:none; margin-top:2px; width:.95em; height:.95em; }
 
   /* ---- mobile: compact 3-line collapsed card, full detail on tap ----
      The customer name, amount, address, relative time and area stay visible
@@ -695,6 +711,7 @@
     <symbol id="ico-download" viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4.5-4.5M12 15l4.5-4.5"/><path d="M4 18v1.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V18"/></symbol>
     <symbol id="ico-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 3.8 1.2 5.3 2 6.3.3.4 0 1.1-.6 1.1H4.6c-.6 0-.9-.7-.6-1.1.8-1 2-2.5 2-6.3z"/><path d="M9.3 19a2.7 2.7 0 0 0 5.4 0"/></symbol>
     <symbol id="ico-tag" viewBox="0 0 24 24"><path d="M12.6 3.4l7 7a2 2 0 0 1 0 2.8l-6.4 6.4a2 2 0 0 1-2.8 0l-7-7A2 2 0 0 1 3 11V4.5A1.5 1.5 0 0 1 4.5 3H11a2 2 0 0 1 1.6.4z"/><circle cx="8" cy="8" r="1.6" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="ico-note" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M16 4v3h3"/><path d="M8 11h8M8 15h5"/></symbol>
   </defs>
 </svg>
 
@@ -769,6 +786,13 @@
       <form class="shop-entry-form" id="shopEntryForm">
         <input type="text" id="shop-code" placeholder="Κωδικός" autocomplete="off" required>
         <input type="text" id="shop-desc" placeholder="Περιγραφή" autocomplete="off" hidden>
+        <select id="shop-payment">
+          <option value="">Πληρωμή —</option>
+          <option>Μετρητοίς</option>
+          <option>Κάρτα</option>
+          <option>Πίστωση</option>
+          <option>Προπληρωμή</option>
+        </select>
         <input type="text" id="shop-amount" class="amount-input" inputmode="decimal" placeholder="Ποσό €" required>
         <button class="btn btn-primary" type="submit">Προσθήκη</button>
       </form>
@@ -876,6 +900,7 @@
             <option>Πίστωση</option>
             <option>Προπληρωμή</option>
           </select>
+          <p class="field-hint" id="paymentLockHint" hidden>Μόνο η διοίκηση μπορεί να αλλάξει τον τρόπο πληρωμής.</p>
         </div>
         <div class="field">
           <label for="f-deliverer">Διανομέας / όχημα</label>
@@ -1261,7 +1286,7 @@
      sheets), so a separate area sheet for it would just be redundant. */
   var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ'];
   var BACKUP_HEADER = ['Α/Α','Πελάτης','Κωδικός','Τεμάχια','Ποσό','Σημειώσεις','Διανομέας','Πληρωμή','Κατάσταση'];
-  var SHOP_SALE_HEADER = ['Α/Α','Κωδικός','Ποσό'];
+  var SHOP_SALE_HEADER = ['Α/Α','Κωδικός','Ποσό','Πληρωμή'];
   var SHOP_EXPENSE_HEADER = ['Α/Α','Περιγραφή','Ποσό'];
   /** Every order that a backup for this day covers, across both areas —
    *  the exact set the workbook rows come from, and (after the user
@@ -1308,10 +1333,10 @@
 
     var saleRows = [SHOP_SALE_HEADER];
     dayShop.filter(function(e){ return e.shopType === 'sale'; }).forEach(function(e, idx){
-      saleRows.push([idx + 1, e.code || '', e.amount || '']);
+      saleRows.push([idx + 1, e.code || '', e.amount || '', e.payment || '']);
     });
     var wsSales = XLSX.utils.aoa_to_sheet(saleRows);
-    wsSales['!cols'] = [{wch:5},{wch:16},{wch:10}];
+    wsSales['!cols'] = [{wch:5},{wch:16},{wch:10},{wch:12}];
     XLSX.utils.book_append_sheet(wb, wsSales, 'Πωλήσεις');
 
     var expenseRows = [SHOP_EXPENSE_HEADER];
@@ -2046,11 +2071,26 @@
     var timeEl = card.querySelector('.cell-time'); if(timeEl) timeEl.textContent = fmtRelative(o.createdAt);
     var delNameEl = card.querySelector('.deliverer-name-val'); if(delNameEl) delNameEl.textContent = o.deliverer;
 
-    var subParts = [];
-    if(o.scheduledDate) subParts.push('Για ' + fmtDateShort(o.scheduledDate));
-    if(o.notes) subParts.push(o.notes);
     var subEl = card.querySelector('.row-sub');
-    if(subEl) subEl.textContent = subParts.join('  ·  ');
+    if(subEl){
+      subEl.innerHTML = '';
+      if(o.scheduledDate){
+        var schedEl = document.createElement('span');
+        schedEl.className = 'row-sub-sched';
+        schedEl.textContent = 'Για ' + fmtDateShort(o.scheduledDate);
+        subEl.appendChild(schedEl);
+      }
+      // Notes get their own bold, boxed callout (not just small muted text)
+      // so something like "χωρίς κουδούνι" or "πληρωμή στον θυρωρό" can't
+      // get missed while scanning the list at a glance.
+      if(o.notes){
+        var noteEl = document.createElement('div');
+        noteEl.className = 'order-note';
+        noteEl.innerHTML = '<svg class="icon"><use href="#ico-note"/></svg><span></span>';
+        noteEl.querySelector('span').textContent = o.notes;
+        subEl.appendChild(noteEl);
+      }
+    }
 
     // status select
     var statusSel = card.querySelector('.status-select');
@@ -2318,17 +2358,20 @@
     entries.forEach(function(en){
       var row = document.createElement('div');
       row.className = 'shop-entry-row ' + (en.shopType === 'expense' ? 'expense' : 'sale');
+      var pm = PAYMENT_META[en.payment];
       row.innerHTML =
         '<span class="set"><svg class="icon"><use href="#'+(en.shopType==='expense'?'ico-cash':'ico-store')+'"/></svg></span>' +
         '<div class="sd">' +
           '<span class="code"></span><span class="desc"></span>' +
           '<div class="meta"></div>' +
         '</div>' +
+        (en.shopType === 'sale' && en.payment ? '<span class="pill '+(pm?pm.cls:'pill-area')+'"></span>' : '') +
         '<div class="sa"></div>' +
         (canDelete ? '<button type="button" class="icon-btn sdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>' : '');
       if(en.code) row.querySelector('.code').textContent = en.code;
       row.querySelector('.desc').textContent = en.description || '';
       row.querySelector('.meta').textContent = (en.shopType === 'expense' ? 'Έξοδο' : 'Πώληση') + ' · ' + fmtRelative(en.createdAt) + (en.createdBy ? ' · ' + en.createdBy : '');
+      var payEl = row.querySelector('.pill'); if(payEl) payEl.textContent = en.payment;
       row.querySelector('.sa').textContent = (en.shopType === 'expense' ? '−' : '+') + (fmtMoney(en.amount) || '0,00 €');
       var delBtn = row.querySelector('.sdel');
       if(delBtn){
@@ -2816,6 +2859,14 @@
       document.getElementById('f-payment').value = 'Μετρητοίς';
       resetItemsList(null);
     }
+    // Drivers can create/edit orders but must never change how the customer
+    // is billed — that's an admin decision. Lock the field (not just hide
+    // it) so its current value still shows, just can't be edited.
+    var paymentSel = document.getElementById('f-payment');
+    var paymentHint = document.getElementById('paymentLockHint');
+    var lockPayment = !!(role && role.type === 'driver');
+    paymentSel.disabled = lockPayment;
+    paymentHint.hidden = !lockPayment;
     overlay.hidden = false;
     setTimeout(function(){ document.getElementById('f-phone').focus(); }, 30);
   }
@@ -3377,6 +3428,7 @@
   // description); an expense is a description + amount (no code) — the two
   // fields swap places, each required only for the type it belongs to.
   var shopEntryType = 'sale';
+  document.getElementById('shop-payment').value = 'Μετρητοίς';
   document.getElementById('shopTypeToggle').addEventListener('click', function(e){
     var btn = e.target.closest('.chip');
     if(!btn) return;
@@ -3385,14 +3437,17 @@
     var isSale = shopEntryType === 'sale';
     var codeEl = document.getElementById('shop-code');
     var descEl = document.getElementById('shop-desc');
+    var paymentEl = document.getElementById('shop-payment');
     codeEl.hidden = !isSale; codeEl.required = isSale;
     descEl.hidden = isSale; descEl.required = !isSale;
+    paymentEl.hidden = !isSale;
   });
   document.getElementById('shopEntryForm').addEventListener('submit', function(e){
     e.preventDefault();
     var codeEl = document.getElementById('shop-code');
     var descEl = document.getElementById('shop-desc');
     var amountEl = document.getElementById('shop-amount');
+    var paymentEl = document.getElementById('shop-payment');
     var amount = parseAmount(amountEl.value);
     var isSale = shopEntryType === 'sale';
     var code = codeEl.value.trim();
@@ -3408,6 +3463,7 @@
       shopType: shopEntryType,
       code: isSale ? code : null,
       description: isSale ? null : desc,
+      payment: isSale ? (paymentEl.value || null) : null,
       amount: amount,
       createdAt: new Date().toISOString(),
       createdBy: role && role.type === 'admin' ? 'Διοίκηση' : (role ? role.name : null)
@@ -3415,6 +3471,7 @@
     codeEl.value = '';
     descEl.value = '';
     amountEl.value = '';
+    paymentEl.value = 'Μετρητοίς';
     (isSale ? codeEl : descEl).focus();
   });
 
