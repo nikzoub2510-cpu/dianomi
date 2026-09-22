@@ -541,6 +541,7 @@
   .field input:focus,.field select:focus,.field textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
   .modal-actions{ display:flex; gap:10px; margin-top:18px; }
   .btn{ padding:10px 18px; border-radius:11px; border:1px solid var(--border); background:var(--surface); color:var(--ink); font-weight:600; font-size:.875rem; cursor:pointer; }
+  .btn:disabled{ opacity:.5; cursor:not-allowed; }
   .btn-primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); flex:1; }
   .btn-ghost{ background:transparent; }
   .btn-danger{ color:var(--st-cancel-fg); }
@@ -1079,7 +1080,7 @@
       <h2>Backup σε Excel</h2>
       <button class="icon-btn" id="backupModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
     </div>
-    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες και τις κινήσεις του μαγαζιού της επιλεγμένης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Πωλήσεις / Έξοδα). Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες και τις κινήσεις του μαγαζιού μιας προηγούμενης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Πωλήσεις / Έξοδα). Η σημερινή ημέρα και οι προγραμματισμένες παραγγελίες δεν περιλαμβάνονται, αφού δεν έχουν ολοκληρωθεί ακόμα. Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
     <div class="field">
       <label for="backupDateInput">Ημερομηνία</label>
       <input type="date" id="backupDateInput">
@@ -1267,6 +1268,14 @@
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
+  /** The latest day a backup is allowed to cover — yesterday. Today's own
+   *  orders are still active/in progress, so today is never backup-eligible
+   *  (see the "Excel backup" block below). */
+  function yesterdayStr(){
+    var d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+  }
   function isSameDay(iso, dayStr){
     if(!iso) return false;
     var d = new Date(iso);
@@ -1285,7 +1294,14 @@
      rows did. There used to be a third "Μαγαζί" area sheet here for
      Μαγαζί-pickup orders, but that order type was removed and the name now
      belongs to the sales/expenses ledger below (its own Πωλήσεις/Έξοδα
-     sheets), so a separate area sheet for it would just be redundant. */
+     sheets), so a separate area sheet for it would just be redundant.
+
+     Only past days are backup-eligible (see yesterdayStr/backupDateInput's
+     max below) — today's orders are still being worked, so a backup+delete
+     run could wipe out something still in progress. For the same reason, an
+     order that's still "Προγραμματισμένη" (scheduledDate in the future) is
+     left out even if it happens to have been created on the day being
+     backed up — it hasn't been actioned yet either. */
   var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ'];
   var BACKUP_HEADER = ['Α/Α','Πελάτης','Κωδικός','Τεμάχια','Ποσό','Σημειώσεις','Διανομέας','Πληρωμή','Κατάσταση'];
   var SHOP_SALE_HEADER = ['Α/Α','Κωδικός','Ποσό','Πληρωμή'];
@@ -1294,9 +1310,15 @@
    *  the exact set the workbook rows come from, and (after the user
    *  confirms) the exact set that gets removed from the program. Μαγαζί
    *  ledger entries have no `area`, so they never match here — they get
-   *  their own Πωλήσεις/Έξοδα sheets and their own day-set below instead. */
+   *  their own Πωλήσεις/Έξοδα sheets and their own day-set below instead.
+   *  Excludes orders still scheduled for a future date (see note above). */
   function ordersForBackup(dayStr){
-    return orders.filter(function(o){ return BACKUP_AREAS.indexOf(o.area) !== -1 && isSameDay(o.createdAt, dayStr); });
+    var dayNow = todayStr();
+    return orders.filter(function(o){
+      return BACKUP_AREAS.indexOf(o.area) !== -1
+        && isSameDay(o.createdAt, dayStr)
+        && !(o.scheduledDate && o.scheduledDate > dayNow);
+    });
   }
   /** The day's Μαγαζί ledger entries (sales and expenses together) — the
    *  exact set that goes into the Πωλήσεις/Έξοδα sheets and, once the user
@@ -3680,19 +3702,28 @@
     (isSale ? codeEl : descEl).focus();
   });
 
-  // backup to excel
+  // backup to excel — only past days are eligible; see ordersForBackup's
+  // doc comment for why today and scheduled orders are excluded.
   function updateBackupCountHint(){
     var dayStr = document.getElementById('backupDateInput').value;
     var hint = document.getElementById('backupCountHint');
-    if(!dayStr){ hint.textContent = ''; return; }
-    var count = orders.filter(function(o){ return o.kind !== 'shop' && isSameDay(o.createdAt, dayStr); }).length;
+    var downloadBtn = document.getElementById('backupDownloadBtn');
+    if(!dayStr || dayStr >= todayStr()){
+      hint.textContent = dayStr ? 'Το backup είναι διαθέσιμο μόνο για προηγούμενες ημέρες.' : '';
+      downloadBtn.disabled = true;
+      return;
+    }
+    downloadBtn.disabled = false;
+    var count = ordersForBackup(dayStr).length;
     var shopCount = shopEntriesForBackup(dayStr).length;
     var text = count + ' παραγγελί' + (count === 1 ? 'α' : 'ες') + ' αυτή την ημέρα';
     if(shopCount) text += ', ' + shopCount + ' κίνησ' + (shopCount === 1 ? 'η μαγαζιού' : 'εις μαγαζιού');
     hint.textContent = text + '.';
   }
   document.getElementById('backupBtn').addEventListener('click', function(){
-    document.getElementById('backupDateInput').value = todayStr();
+    var dateInput = document.getElementById('backupDateInput');
+    dateInput.max = yesterdayStr();
+    dateInput.value = yesterdayStr();
     updateBackupCountHint();
     document.getElementById('backupModalOverlay').hidden = false;
   });
@@ -3702,8 +3733,7 @@
   document.getElementById('backupDateInput').addEventListener('change', updateBackupCountHint);
   document.getElementById('backupDownloadBtn').addEventListener('click', function(){
     var dayStr = document.getElementById('backupDateInput').value;
-    var hint = document.getElementById('backupCountHint');
-    if(!dayStr) return;
+    if(!dayStr || dayStr >= todayStr()) return; // defense in depth — the date input's max already blocks this in the UI
     var dayOrders = ordersForBackup(dayStr);
     var dayShop = shopEntriesForBackup(dayStr);
     downloadBackupExcel(dayStr);
