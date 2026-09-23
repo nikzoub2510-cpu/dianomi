@@ -1080,9 +1080,9 @@
       <h2>Backup σε Excel</h2>
       <button class="icon-btn" id="backupModalClose"><svg class="icon"><use href="#ico-close"/></svg></button>
     </div>
-    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις παραγγελίες και τις κινήσεις του μαγαζιού μιας προηγούμενης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Πωλήσεις / Έξοδα). Η σημερινή ημέρα και οι προγραμματισμένες παραγγελίες δεν περιλαμβάνονται, αφού δεν έχουν ολοκληρωθεί ακόμα. Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
+    <p style="font-size:.8rem;color:var(--ink-muted);margin-top:0;">Κατεβάζει τις <strong>ολοκληρωμένες</strong> παραγγελίες (με βάση την ημερομηνία ολοκλήρωσης, όχι καταχώρησης) και τις κινήσεις του μαγαζιού μιας προηγούμενης ημέρας σε αρχείο Excel (φύλλα Πόλη / Έξω / Πωλήσεις / Έξοδα). Ακυρωμένες, ενεργές και προγραμματισμένες παραγγελίες δεν περιλαμβάνονται ποτέ, ούτε η σημερινή ημέρα. Μετά τη λήψη θα σου ζητηθεί επιβεβαίωση για να διαγραφούν οριστικά από το πρόγραμμα.</p>
     <div class="field">
-      <label for="backupDateInput">Ημερομηνία</label>
+      <label for="backupDateInput">Ημερομηνία ολοκλήρωσης</label>
       <input type="date" id="backupDateInput">
     </div>
     <p class="field-hint" id="backupCountHint"></p>
@@ -1160,6 +1160,19 @@
   };
   var NEXT_STATUS = {'Σε εξέλιξη':'Σε διανομή','Σε διανομή':'Ολοκληρώθηκε'};
   var NEXT_LABEL = {'Σε εξέλιξη':'Ξεκίνα διανομή','Σε διανομή':'Ολοκληρώθηκε ✓'};
+  /** Patch to apply on any status change. Stamps completedAt the moment an
+   *  order becomes "Ολοκληρώθηκε" — this is what the Excel backup (below)
+   *  keys off of, instead of the day the order was first created — and
+   *  clears it if the order is ever moved off "Ολοκληρώθηκε" again (e.g.
+   *  undone by mistake), so a stale completion date can't linger. */
+  function statusPatch(next){
+    var now = new Date().toISOString();
+    return {
+      status: next,
+      updatedAt: now,
+      completedAt: next === 'Ολοκληρώθηκε' ? now : null
+    };
+  }
   var PAYMENT_META = {
     'Μετρητοίς':  {cls:'pill-pay-cash'},
     'Κάρτα':      {cls:'pill-pay-card'},
@@ -1288,36 +1301,47 @@
      Rebuilds one sheet per area (Πόλη / Έξω) for a single calendar
      day, matching the columns of the paper/Excel log this replaces:
      Α/Α, Πελάτης, Κωδικός, Τεμάχια, Ποσό, Σημειώσεις, Διανομέας, Πληρωμή, Κατάσταση.
-     "Day" is the order's createdAt date. A multi-item order keeps only its
-     total (Ποσό) — Κωδικός/Τεμάχια are left blank for it, since one row can't
-     represent several line items the way the original sheet's single-item
-     rows did. There used to be a third "Μαγαζί" area sheet here for
-     Μαγαζί-pickup orders, but that order type was removed and the name now
-     belongs to the sales/expenses ledger below (its own Πωλήσεις/Έξοδα
-     sheets), so a separate area sheet for it would just be redundant.
+     "Day" is the day the order was completed (its completedAt — see
+     statusPatch above — with a fallback to updatedAt/createdAt for orders
+     that were already "Ολοκληρώθηκε" before completedAt existed), NOT the
+     day it was created. A multi-item order keeps only its total (Ποσό) —
+     Κωδικός/Τεμάχια are left blank for it, since one row can't represent
+     several line items the way the original sheet's single-item rows did.
+     There used to be a third "Μαγαζί" area sheet here for Μαγαζί-pickup
+     orders, but that order type was removed and the name now belongs to
+     the sales/expenses ledger below (its own Πωλήσεις/Έξοδα sheets), so a
+     separate area sheet for it would just be redundant.
 
-     Only past days are backup-eligible (see yesterdayStr/backupDateInput's
-     max below) — today's orders are still being worked, so a backup+delete
-     run could wipe out something still in progress. For the same reason, an
-     order that's still "Προγραμματισμένη" (scheduledDate in the future) is
-     left out even if it happens to have been created on the day being
-     backed up — it hasn't been actioned yet either. */
+     Only "Ολοκληρώθηκε" (completed) orders are ever included — never
+     "Ακυρώθηκε" (cancelled) or still-active ones, and never a still-future
+     "Προγραμματισμένη" order, since it can't be completed yet. Only past
+     days are backup-eligible (see yesterdayStr/backupDateInput's max
+     below); today is excluded even though today's completions would in
+     principle qualify, simply to keep "no backups of the current day" an
+     absolute rule. */
   var BACKUP_AREAS = ['ΠΟΛΗ', 'ΕΞΩ'];
   var BACKUP_HEADER = ['Α/Α','Πελάτης','Κωδικός','Τεμάχια','Ποσό','Σημειώσεις','Διανομέας','Πληρωμή','Κατάσταση'];
   var SHOP_SALE_HEADER = ['Α/Α','Κωδικός','Ποσό','Πληρωμή'];
   var SHOP_EXPENSE_HEADER = ['Α/Α','Περιγραφή','Ποσό'];
-  /** Every order that a backup for this day covers, across both areas —
-   *  the exact set the workbook rows come from, and (after the user
-   *  confirms) the exact set that gets removed from the program. Μαγαζί
-   *  ledger entries have no `area`, so they never match here — they get
-   *  their own Πωλήσεις/Έξοδα sheets and their own day-set below instead.
-   *  Excludes orders still scheduled for a future date (see note above). */
+  /** The day an order counts as completed on, for backup purposes: its
+   *  completedAt when available, falling back to updatedAt and then
+   *  createdAt for orders marked "Ολοκληρώθηκε" before completedAt was
+   *  introduced. */
+  function orderCompletedAt(o){
+    return o.completedAt || o.updatedAt || o.createdAt;
+  }
+  /** Every completed order that a backup for this day covers, across both
+   *  areas — the exact set the workbook rows come from (buildBackupSheets
+   *  uses this same function, so the file and the delete step can never
+   *  drift apart), and, after the user confirms, the exact set that gets
+   *  removed from the program. Μαγαζί ledger entries have no `area`, so
+   *  they never match here — they get their own Πωλήσεις/Έξοδα sheets and
+   *  their own day-set below instead. */
   function ordersForBackup(dayStr){
-    var dayNow = todayStr();
     return orders.filter(function(o){
       return BACKUP_AREAS.indexOf(o.area) !== -1
-        && isSameDay(o.createdAt, dayStr)
-        && !(o.scheduledDate && o.scheduledDate > dayNow);
+        && o.status === 'Ολοκληρώθηκε'
+        && isSameDay(orderCompletedAt(o), dayStr);
     });
   }
   /** The day's Μαγαζί ledger entries (sales and expenses together) — the
@@ -1541,14 +1565,15 @@
 
   function buildBackupSheets(dayStr){
     var sheets = [];
+    var completedOrders = ordersForBackup(dayStr);
     BACKUP_AREAS.forEach(function(area){
-      var dayOrders = orders
-        .filter(function(o){ return o.area === area && isSameDay(o.createdAt, dayStr); })
+      var areaOrders = completedOrders
+        .filter(function(o){ return o.area === area; })
         .slice()
-        .sort(function(a,b){ return new Date(a.createdAt) - new Date(b.createdAt); });
+        .sort(function(a,b){ return new Date(orderCompletedAt(a)) - new Date(orderCompletedAt(b)); });
 
       var rows = [BACKUP_HEADER];
-      dayOrders.forEach(function(o, idx){
+      areaOrders.forEach(function(o, idx){
         var lineItems = (o.items && o.items.length) ? o.items : ((o.code || o.qty || o.amount) ? [{code:o.code, qty:o.qty, amount:o.amount}] : []);
         var code = '', qty = '', amount = '';
         if(lineItems.length === 1){
@@ -2329,9 +2354,7 @@
         statusSel.appendChild(opt);
       });
       statusSel.addEventListener('change', function(){
-        var next = statusSel.value;
-        var patch = {status: next, updatedAt: new Date().toISOString()};
-        updateOrder(o.id, patch);
+        updateOrder(o.id, statusPatch(statusSel.value));
       });
     }
 
@@ -2359,7 +2382,7 @@
     if(advBtn){
       advBtn.addEventListener('click', function(){
         var next = NEXT_STATUS[o.status];
-        if(next) updateOrder(o.id, {status: next, updatedAt: new Date().toISOString()});
+        if(next) updateOrder(o.id, statusPatch(next));
       });
     }
 
@@ -3702,8 +3725,8 @@
     (isSale ? codeEl : descEl).focus();
   });
 
-  // backup to excel — only past days are eligible; see ordersForBackup's
-  // doc comment for why today and scheduled orders are excluded.
+  // backup to excel — only completed ("Ολοκληρώθηκε") orders from past
+  // days are eligible; see ordersForBackup's doc comment for details.
   function updateBackupCountHint(){
     var dayStr = document.getElementById('backupDateInput').value;
     var hint = document.getElementById('backupCountHint');
@@ -3716,7 +3739,7 @@
     downloadBtn.disabled = false;
     var count = ordersForBackup(dayStr).length;
     var shopCount = shopEntriesForBackup(dayStr).length;
-    var text = count + ' παραγγελί' + (count === 1 ? 'α' : 'ες') + ' αυτή την ημέρα';
+    var text = count + ' ολοκληρωμέν' + (count === 1 ? 'η παραγγελία' : 'ες παραγγελίες') + ' αυτή την ημέρα';
     if(shopCount) text += ', ' + shopCount + ' κίνησ' + (shopCount === 1 ? 'η μαγαζιού' : 'εις μαγαζιού');
     hint.textContent = text + '.';
   }
@@ -3740,7 +3763,7 @@
     document.getElementById('backupModalOverlay').hidden = true;
     if(dayOrders.length || dayShop.length){
       var parts = [];
-      if(dayOrders.length) parts.push(dayOrders.length + ' παραγγελί' + (dayOrders.length === 1 ? 'α' : 'ες'));
+      if(dayOrders.length) parts.push(dayOrders.length + ' ολοκληρωμέν' + (dayOrders.length === 1 ? 'η παραγγελία' : 'ες παραγγελίες'));
       if(dayShop.length) parts.push(dayShop.length + ' κίνησ' + (dayShop.length === 1 ? 'η μαγαζιού' : 'εις μαγαζιού'));
       showConfirm(
         'Έγινε η λήψη του αρχείου Excel. Να διαγραφούν ' + parts.join(' και ') + ' αυτής της ημέρας από το πρόγραμμα;',
