@@ -246,6 +246,56 @@
   .shop-entry-row.expense .sa{ color:var(--st-cancel-fg); }
   .shop-entry-row .sdel{ flex:none; }
 
+  /* ---------- Ενοικιάσεις: monthly heater rentals ---------- */
+  .rentals-section{ display:flex; flex-direction:column; gap:14px; }
+  .rental-form-card,.rental-calendar-card{
+    background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:14px;
+  }
+  .rental-form-title{ font-size:.95rem; margin:0 0 10px; }
+  .rental-cal-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+  .rental-cal-head h3{ font-size:1rem; text-align:center; flex:1; }
+  .cal-nav-btn{
+    width:32px; height:32px; border-radius:9px; border:1px solid var(--border); background:var(--surface-2);
+    color:var(--ink); font-size:1.2rem; line-height:1; cursor:pointer; flex:none; font-family:inherit;
+  }
+  .cal-nav-btn:hover{ border-color:var(--accent); color:var(--accent-strong); }
+  .rental-cal-weekdays{
+    display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin-bottom:4px;
+    font-size:.7rem; font-weight:700; color:var(--ink-muted); text-align:center;
+  }
+  .rental-cal-grid{ display:grid; grid-template-columns:repeat(7,1fr); gap:4px; }
+  .cal-cell{
+    position:relative; aspect-ratio:1/1; border-radius:9px; background:var(--surface-2);
+    padding:4px; display:flex; flex-direction:column; align-items:flex-start;
+  }
+  .cal-cell.other-month{ opacity:.35; }
+  .cal-cell.today{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .cal-day-num{ font-size:.72rem; font-weight:600; color:var(--ink-muted); font-family:var(--font-mono); }
+  .cal-marker{
+    position:absolute; bottom:4px; right:4px; min-width:16px; height:16px; padding:0 4px; border-radius:999px;
+    font-size:.62rem; font-weight:700; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); background:var(--st-transit-bg); color:var(--st-transit-fg);
+  }
+  .cal-marker.urgent{ background:var(--st-pending-bg); color:var(--st-pending-fg); }
+  .cal-marker.overdue{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+  .rental-row{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border); }
+  .rental-row:last-child{ border-bottom:none; }
+  .rental-row .oi{
+    width:34px; height:34px; border-radius:9px; background:var(--surface-2); display:flex;
+    align-items:center; justify-content:center; color:var(--ink-muted); flex:none;
+  }
+  .rental-row .rd{ flex:1 1 auto; min-width:0; }
+  .rental-row .rname{ font-weight:700; font-size:.88rem; }
+  .rental-row .rline{ font-size:.75rem; color:var(--ink-muted); margin-top:1px; }
+  .badge-renewal{
+    flex:none; font-size:.68rem; font-weight:700; padding:3px 8px; border-radius:999px;
+    background:var(--st-transit-bg); color:var(--st-transit-fg); font-family:var(--font-mono); white-space:nowrap;
+  }
+  .badge-renewal.urgent{ background:var(--st-pending-bg); color:var(--st-pending-fg); }
+  .badge-renewal.overdue{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+  .rental-row .ra{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:.9rem; flex:none; }
+  .rental-row .rdel{ flex:none; }
+
   /* ---------- order list & rows ----------
      #orderGrid is ONE shared CSS grid: every order contributes the same
      fixed sequence of cells (time, customer, area, items, amount, payment,
@@ -635,6 +685,7 @@
 
   .banner{ background:var(--st-pending-bg); color:var(--st-pending-fg); font-size:.78rem; padding:8px 14px; text-align:center; }
   .banner-danger{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+  .banner-warning{ background:var(--st-pending-bg); color:var(--st-pending-fg); }
 
   .visually-hidden{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 
@@ -718,6 +769,7 @@
 
 <div id="offlineBanner" class="banner" hidden>Λειτουργία χωρίς σύνδεση αποθήκευσης — οι αλλαγές δεν αποθηκεύονται μόνιμα σε αυτήν την προβολή.</div>
 <div id="dbErrorBanner" class="banner banner-danger" hidden></div>
+<div id="rentalReminderBanner" class="banner banner-warning" hidden></div>
 
 <header class="topbar">
   <div class="topbar-inner">
@@ -751,6 +803,7 @@
       <button class="tab" role="tab" data-section="scheduled">Προγραμματισμένες</button>
       <button class="tab" role="tab" data-section="history">Ιστορικό</button>
       <button class="tab" role="tab" data-section="shop" id="shopTab" hidden>Μαγαζί</button>
+      <button class="tab" role="tab" data-section="rentals" id="rentalsTab" hidden>Ενοικιάσεις</button>
     </div>
 
     <div class="filter-row" id="orderFilterRow">
@@ -800,6 +853,54 @@
     </div>
     <div class="stats shop-stats" id="shopStats"></div>
     <div class="shop-list" id="shopList"></div>
+  </div>
+
+  <!-- Ενοικιάσεις: monthly heater rentals. Same kind:'rental' pattern as
+       Μαγαζί above — stored in `orders`, pulled back out by getRentals().
+       ΦΠΑ is fixed at 24% (RENTAL_VAT_RATE), not editable per rental. -->
+  <div class="rentals-section" id="rentalsSection" hidden>
+    <div class="rental-form-card">
+      <h3 class="rental-form-title">Νέο μίσθωμα θερμάστρας</h3>
+      <form id="rentalForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="r-code">Κωδικός πελάτη *</label>
+            <input id="r-code" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="r-name">Επωνυμία *</label>
+            <input id="r-name" autocomplete="off" required>
+          </div>
+          <div class="field">
+            <label for="r-start">Ημερομηνία έναρξης *</label>
+            <input id="r-start" type="date" required>
+          </div>
+          <div class="field span2">
+            <label>Θερμάστρες</label>
+            <div id="rentalItemsList"></div>
+            <button type="button" class="btn btn-ghost add-item-btn" id="addRentalItemBtn">+ Προσθήκη είδους</button>
+            <div class="items-total-row"><span>Μηνιαίο μίσθωμα (με ΦΠΑ 24%)</span><span id="rentalItemsTotal">0,00 €</span></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn btn-primary">Καταχώρηση μισθώματος</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="rental-calendar-card">
+      <div class="rental-cal-head">
+        <button type="button" class="cal-nav-btn" id="rentalCalPrev" title="Προηγούμενος μήνας">&lsaquo;</button>
+        <h3 id="rentalCalLabel"></h3>
+        <button type="button" class="cal-nav-btn" id="rentalCalNext" title="Επόμενος μήνας">&rsaquo;</button>
+      </div>
+      <div class="rental-cal-weekdays">
+        <span>Δε</span><span>Τρ</span><span>Τε</span><span>Πε</span><span>Πα</span><span>Σα</span><span>Κυ</span>
+      </div>
+      <div class="rental-cal-grid" id="rentalCalGrid"></div>
+    </div>
+
+    <div class="rental-list" id="rentalList"></div>
   </div>
 </div>
 
@@ -1173,6 +1274,15 @@
       completedAt: next === 'Ολοκληρώθηκε' ? now : null
     };
   }
+  /** Ενοικιάσεις θερμαστρών: ΦΠΑ is fixed at 24%, not editable per rental —
+   *  see the rentals feature spec. */
+  var RENTAL_VAT_RATE = 0.24;
+  function rentalItemsSubtotal(items){
+    return (items||[]).reduce(function(sum, it){ return sum + (Number(it.qty)||0) * (Number(it.unitPrice)||0); }, 0);
+  }
+  function rentalMonthlyTotal(items){
+    return rentalItemsSubtotal(items) * (1 + RENTAL_VAT_RATE);
+  }
   var PAYMENT_META = {
     'Μετρητοίς':  {cls:'pill-pay-cash'},
     'Κάρτα':      {cls:'pill-pay-card'},
@@ -1210,12 +1320,16 @@
   // below is the single place that pulls them back out of `orders`; every
   // other order-list function (getFilteredOrders, renderStats, the item-code
   // datalist, the per-day backup) explicitly excludes kind==='shop'.
+  // Ενοικιάσεις (heater rentals, kind:'rental') reuse the exact same trick —
+  // see getRentals() near getShopEntries() below — and are excluded at every
+  // one of those same call sites alongside kind==='shop'.
   var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
   var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
   var customerSearch = '';
   var knownCodes = new Set();
   var expandedOrderIds = new Set(); // order ids whose mobile card is tapped open — persists across onSnapshot re-renders
+  var rentalCalMonth = null; // {year, month} — first-of-month currently shown in the Ενοικιάσεις calendar
 
   var localSeq = 1;
 
@@ -1294,6 +1408,41 @@
     var d = new Date(iso);
     var s = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
     return s === dayStr;
+  }
+  /** Adds `n` months to a Y-M-D date string, clamping the day to the target
+   *  month's length (e.g. Jan 31 + 1 month -> Feb 28/29, not Mar 3). Used to
+   *  step a rental's monthly renewal date forward from its start date. */
+  function addMonthsClamped(dateStr, n){
+    var p = dateStr.split('-').map(Number);
+    var y = p[0], m0 = p[1] - 1, d = p[2];
+    var base = new Date(Date.UTC(y, m0 + n, 1));
+    var year = base.getUTCFullYear(), month = base.getUTCMonth();
+    var daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+    var day = Math.min(d, daysInMonth);
+    return year + '-' + String(month+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+  }
+  /** The next monthly renewal date for a rental that started on `startDate`,
+   *  as of `refStr` (defaults to today) — the smallest monthly anniversary of
+   *  the start date that falls on or after refStr. Renews indefinitely every
+   *  month until the rental is deleted; if it hasn't started yet, its start
+   *  date itself is the first renewal to watch. */
+  function rentalNextRenewal(startDate, refStr){
+    refStr = refStr || todayStr();
+    if(!startDate) return null;
+    if(startDate >= refStr) return startDate;
+    var candidate = startDate, n = 0;
+    while(candidate < refStr && n < 1200){
+      n++;
+      candidate = addMonthsClamped(startDate, n);
+    }
+    return candidate;
+  }
+  /** Whole days between today and a date string (negative = already past). */
+  function daysUntil(dateStr){
+    if(!dateStr) return null;
+    var today = new Date(todayStr() + 'T00:00:00');
+    var target = new Date(dateStr + 'T00:00:00');
+    return Math.round((target - today) / 86400000);
   }
   function uid(){ return 'local-' + (localSeq++) + '-' + Date.now(); }
 
@@ -1629,6 +1778,9 @@
   /** Μαγαζί ledger rows live inside `orders` (see the var declaration above
    *  for why) — this is the one place that pulls them back out. */
   function getShopEntries(){ return orders.filter(function(o){ return o.kind === 'shop'; }); }
+  /** Ενοικιάσεις θερμαστρών (heater rentals) live inside `orders` too, same
+   *  reasoning as Μαγαζί above (kind:'rental'). */
+  function getRentals(){ return orders.filter(function(o){ return o.kind === 'rental'; }); }
 
   function createOrder(data){
     if(offline){
@@ -2060,6 +2212,7 @@
     var delFilter = document.getElementById('delivererFilterSelect');
     var customersBtn = document.getElementById('customersBtn');
     var shopTab = document.getElementById('shopTab');
+    var rentalsTab = document.getElementById('rentalsTab');
     if(!role){
       badgeText.textContent = 'Επιλογή…';
       rosterBtn.hidden = true;
@@ -2069,6 +2222,7 @@
       mineToggle.hidden = true;
       delFilter.hidden = true;
       shopTab.hidden = true;
+      rentalsTab.hidden = true;
       return;
     }
     if(role.type === 'admin'){
@@ -2081,6 +2235,7 @@
       delFilter.hidden = false;
       customersBtn.hidden = false;
       shopTab.hidden = false;
+      rentalsTab.hidden = false;
       populateDelivererFilterOptions();
     } else {
       badgeText.textContent = role.name;
@@ -2102,7 +2257,7 @@
       // admin-only, same as products/roster/backup above. If a driver's
       // role kicks in while that tab was somehow selected, fall back to
       // the active-orders tab instead of leaving them on a hidden one.
-      if(shopTab.hidden === false || filters.section === 'shop'){
+      if(shopTab.hidden === false || filters.section === 'shop' || rentalsTab.hidden === false || filters.section === 'rentals'){
         filters.section = 'active';
         var activeTabBtn = document.querySelector('#sectionTabs .tab[data-section="active"]');
         if(activeTabBtn){
@@ -2111,6 +2266,7 @@
         showSection('active');
       }
       shopTab.hidden = true;
+      rentalsTab.hidden = true;
       refreshPushBtnState();
     }
   }
@@ -2145,7 +2301,7 @@
   function getFilteredOrders(){
     var dayNow = todayStr();
     return orders.filter(function(o){
-      if(o.kind === 'shop') return false; // Μαγαζί ledger rows never show in the order feed
+      if(o.kind === 'shop' || o.kind === 'rental') return false; // Μαγαζί ledger rows & rentals never show in the order feed
       if(filters.area !== 'ALL' && o.area !== filters.area) return false;
       if(filters.search){
         var q = filters.search.toLowerCase();
@@ -2192,7 +2348,7 @@
   function renderStats(){
     var box = document.getElementById('stats');
     var dayNow = todayStr();
-    var realOrders = orders.filter(function(o){ return o.kind !== 'shop'; });
+    var realOrders = orders.filter(function(o){ return o.kind !== 'shop' && o.kind !== 'rental'; });
     var pool = filters.area === 'ALL' ? realOrders : realOrders.filter(function(o){ return o.area===filters.area; });
     // Match the "Ενεργές" tab: an order scheduled for a future date doesn't
     // count as pending/in-transit today yet.
@@ -2633,6 +2789,127 @@
     });
   }
 
+  /* ---------------- Ενοικιάσεις: monthly heater rentals ---------------- */
+  function rentalCalReset(){
+    var t = new Date();
+    rentalCalMonth = {year: t.getFullYear(), month: t.getMonth()};
+  }
+  function renderRentalReminderBanner(){
+    var banner = document.getElementById('rentalReminderBanner');
+    if(!banner) return;
+    if(!role || role.type !== 'admin'){ banner.hidden = true; return; }
+    var due = getRentals().map(function(r){
+      var next = rentalNextRenewal(r.startDate);
+      return {r: r, next: next, days: daysUntil(next)};
+    }).filter(function(x){ return x.days !== null && x.days <= 3; })
+      .sort(function(a,b){ return a.days - b.days; });
+    if(due.length === 0){ banner.hidden = true; return; }
+    var parts = due.slice(0,3).map(function(x){
+      var label = x.days < 0 ? ('έληξε πριν ' + Math.abs(x.days) + (Math.abs(x.days) === 1 ? ' ημέρα' : ' ημέρες'))
+        : x.days === 0 ? 'λήγει σήμερα'
+        : ('λήγει σε ' + x.days + (x.days === 1 ? ' ημέρα' : ' ημέρες'));
+      return (x.r.customerName || x.r.customerCode || '—') + ' (' + label + ')';
+    });
+    var extra = due.length > 3 ? ' και ' + (due.length - 3) + ' ακόμη' : '';
+    banner.textContent = 'Ανανέωση μισθώματος θερμάστρας: ' + parts.join(' · ') + extra + '.';
+    banner.hidden = false;
+  }
+  var RENTAL_MONTH_NAMES = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'];
+  function renderRentalCalendar(){
+    var grid = document.getElementById('rentalCalGrid');
+    var label = document.getElementById('rentalCalLabel');
+    if(!grid || !label) return;
+    if(!rentalCalMonth) rentalCalReset();
+    var year = rentalCalMonth.year, month = rentalCalMonth.month;
+    label.textContent = RENTAL_MONTH_NAMES[month] + ' ' + year;
+
+    var byDay = {};
+    getRentals().forEach(function(r){
+      var next = rentalNextRenewal(r.startDate);
+      if(!next) return;
+      (byDay[next] = byDay[next] || []).push({r:r, days: daysUntil(next)});
+    });
+
+    var firstOfMonth = new Date(Date.UTC(year, month, 1));
+    var firstWeekday = (firstOfMonth.getUTCDay() + 6) % 7; // Mon=0..Sun=6
+    var daysInMonth = new Date(Date.UTC(year, month+1, 0)).getUTCDate();
+    var daysInPrevMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    var todayS = todayStr();
+
+    var cells = [];
+    for(var i=0;i<firstWeekday;i++){
+      cells.push({day: daysInPrevMonth - firstWeekday + 1 + i, otherMonth:true});
+    }
+    for(var d=1; d<=daysInMonth; d++){
+      cells.push({day:d, dateStr: year + '-' + String(month+1).padStart(2,'0') + '-' + String(d).padStart(2,'0')});
+    }
+    var nextDay = 1;
+    while(cells.length % 7 !== 0){
+      cells.push({day: nextDay++, otherMonth:true});
+    }
+
+    grid.innerHTML = '';
+    cells.forEach(function(c){
+      var cell = document.createElement('div');
+      cell.className = 'cal-cell' + (c.otherMonth ? ' other-month' : '') + (c.dateStr === todayS ? ' today' : '');
+      var html = '<span class="cal-day-num">'+c.day+'</span>';
+      var matches = c.dateStr ? byDay[c.dateStr] : null;
+      if(matches && matches.length){
+        var worst = Math.min.apply(null, matches.map(function(m){ return m.days; }));
+        var cls = worst < 0 ? 'overdue' : (worst <= 3 ? 'urgent' : '');
+        var names = matches.map(function(m){ return m.r.customerName || m.r.customerCode || ''; }).join(', ');
+        html += '<span class="cal-marker '+cls+'" title="'+esc(names)+'">' + matches.length + '</span>';
+      }
+      cell.innerHTML = html;
+      grid.appendChild(cell);
+    });
+  }
+  function renderRentalList(){
+    var box = document.getElementById('rentalList');
+    if(!box) return;
+    var rows = getRentals().map(function(r){
+      var next = rentalNextRenewal(r.startDate);
+      return {r:r, next: next, days: daysUntil(next)};
+    }).sort(function(a,b){ return (a.days==null?9999:a.days) - (b.days==null?9999:b.days); });
+    box.innerHTML = '';
+    if(rows.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = '<svg viewBox="0 0 24 24"><use href="#ico-calendar"/></svg><h3>Καμία ενεργή μίσθωση</h3><p>Πρόσθεσε ένα μίσθωμα θερμάστρας παραπάνω.</p>';
+      box.appendChild(empty);
+      return;
+    }
+    rows.forEach(function(x){
+      var r = x.r;
+      var badgeCls = x.days == null ? '' : (x.days < 0 ? 'overdue' : (x.days <= 3 ? 'urgent' : ''));
+      var badgeText = x.days == null ? '' : (x.days < 0 ? ('έληξε ' + Math.abs(x.days) + 'μ') : x.days === 0 ? 'σήμερα' : ('σε ' + x.days + 'μ'));
+      var itemsSummary = (r.items||[]).map(function(it){ return it.type + ' ×' + (it.qty||0); }).join(', ');
+      var row = document.createElement('div');
+      row.className = 'rental-row';
+      row.innerHTML =
+        '<span class="oi"><svg class="icon"><use href="#ico-calendar"/></svg></span>' +
+        '<div class="rd">' +
+          '<div class="rname"></div>' +
+          '<div class="rline ritems"></div>' +
+          '<div class="rline rmeta"></div>' +
+        '</div>' +
+        '<span class="badge-renewal '+badgeCls+'"></span>' +
+        '<div class="ra"></div>' +
+        '<button type="button" class="icon-btn rdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
+      row.querySelector('.rname').textContent = (r.customerCode ? r.customerCode + ' — ' : '') + (r.customerName || '');
+      row.querySelector('.ritems').textContent = itemsSummary;
+      row.querySelector('.rmeta').textContent = 'Έναρξη ' + fmtDateShort(r.startDate) + ' · Ανανέωση ' + fmtDateShort(x.next);
+      row.querySelector('.badge-renewal').textContent = badgeText;
+      row.querySelector('.ra').textContent = fmtMoney(rentalMonthlyTotal(r.items)) || '0,00 €';
+      row.querySelector('.rdel').addEventListener('click', function(){
+        showConfirm('Διαγραφή του μισθώματος του/της «'+(r.customerName||'')+'»;', function(){
+          requestPin('Κωδικός διαγραφής μισθώματος', ADMIN_PIN, function(){ deleteOrder(r.id); });
+        });
+      });
+      box.appendChild(row);
+    });
+  }
+
   function renderCodeList(){
     var dl = document.getElementById('codeList');
     dl.innerHTML = '';
@@ -3048,6 +3325,7 @@
     renderStats();
     renderOrders();
     renderShop();
+    renderRentalReminderBanner();
     renderCodeList();
     renderCustomerNameDatalist();
     updateRoleUI();
@@ -3067,6 +3345,8 @@
     if(rosterModal && !rosterModal.hidden) renderRoster();
     var productsModal = document.getElementById('productsModalOverlay');
     if(productsModal && !productsModal.hidden) renderProducts();
+    var rentalsSec = document.getElementById('rentalsSection');
+    if(rentalsSec && !rentalsSec.hidden){ renderRentalCalendar(); renderRentalList(); }
   }
 
   /* ---------------- modals ---------------- */
@@ -3725,6 +4005,83 @@
     (isSale ? codeEl : descEl).focus();
   });
 
+  // Ενοικιάσεις: heater line items, reusing the exact same .item-row markup
+  // and CSS as an order's item rows (see addItemRow above) — just simpler,
+  // since there's no linked-product-price feature here, only free-text type.
+  function recomputeRentalTotal(){
+    var sum = 0;
+    document.querySelectorAll('#rentalItemsList .r-item-row').forEach(function(row){
+      var qty = Number(row.querySelector('.ri-qty').value) || 0;
+      var price = parseAmount(row.querySelector('.ri-price').value) || 0;
+      sum += qty * price;
+    });
+    document.getElementById('rentalItemsTotal').textContent = fmtMoney(sum * (1 + RENTAL_VAT_RATE)) || '0,00 €';
+  }
+  function addRentalItemRow(item){
+    item = item || {};
+    var list = document.getElementById('rentalItemsList');
+    var row = document.createElement('div');
+    row.className = 'item-row r-item-row';
+    row.innerHTML =
+      '<div class="item-row-fields">' +
+        '<input class="item-code ri-type" placeholder="Είδος θερμάστρας" autocomplete="off">' +
+        '<input class="item-qty ri-qty" type="number" min="0" step="1" inputmode="numeric" placeholder="0">' +
+        '<input class="item-amount ri-price amount-input" type="text" inputmode="decimal" placeholder="Τιμή/τεμ €">' +
+        '<button type="button" class="item-remove" tabindex="-1" title="Αφαίρεση γραμμής">&times;</button>' +
+      '</div>';
+    row.querySelector('.ri-type').value = item.type || '';
+    row.querySelector('.ri-qty').value = item.qty || '';
+    row.querySelector('.ri-price').value = (item.unitPrice === 0 || item.unitPrice) ? item.unitPrice : '';
+    row.querySelector('.item-remove').addEventListener('click', function(){ row.remove(); recomputeRentalTotal(); });
+    row.querySelector('.ri-qty').addEventListener('input', recomputeRentalTotal);
+    row.querySelector('.ri-price').addEventListener('input', recomputeRentalTotal);
+    list.appendChild(row);
+  }
+  document.getElementById('addRentalItemBtn').addEventListener('click', function(){ addRentalItemRow(); });
+  addRentalItemRow();
+
+  document.getElementById('rentalForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    var code = document.getElementById('r-code').value.trim();
+    var name = document.getElementById('r-name').value.trim();
+    var start = document.getElementById('r-start').value;
+    if(!code || !name || !start) return;
+    var items = [];
+    document.querySelectorAll('#rentalItemsList .r-item-row').forEach(function(row){
+      var type = row.querySelector('.ri-type').value.trim();
+      var qty = Number(row.querySelector('.ri-qty').value) || 0;
+      var unitPrice = parseAmount(row.querySelector('.ri-price').value) || 0;
+      if(type && qty) items.push({type: type, qty: qty, unitPrice: unitPrice});
+    });
+    if(items.length === 0) return;
+    createOrder({
+      kind: 'rental',
+      customerCode: code,
+      customerName: name,
+      items: items,
+      vatRate: RENTAL_VAT_RATE,
+      startDate: start,
+      createdAt: new Date().toISOString(),
+      createdBy: role && role.type === 'admin' ? 'Διοίκηση' : (role ? role.name : null)
+    });
+    document.getElementById('rentalForm').reset();
+    document.getElementById('rentalItemsList').innerHTML = '';
+    addRentalItemRow();
+    recomputeRentalTotal();
+  });
+  document.getElementById('rentalCalPrev').addEventListener('click', function(){
+    if(!rentalCalMonth) rentalCalReset();
+    rentalCalMonth.month--;
+    if(rentalCalMonth.month < 0){ rentalCalMonth.month = 11; rentalCalMonth.year--; }
+    renderRentalCalendar();
+  });
+  document.getElementById('rentalCalNext').addEventListener('click', function(){
+    if(!rentalCalMonth) rentalCalReset();
+    rentalCalMonth.month++;
+    if(rentalCalMonth.month > 11){ rentalCalMonth.month = 0; rentalCalMonth.year++; }
+    renderRentalCalendar();
+  });
+
   // backup to excel — only completed ("Ολοκληρώθηκε") orders from past
   // days are eligible; see ordersForBackup's doc comment for details.
   function updateBackupCountHint(){
@@ -3826,10 +4183,17 @@
   // filters.section feeding the same renderOrders() path.
   function showSection(section){
     var isShop = section === 'shop';
-    document.getElementById('orderFilterRow').hidden = isShop;
-    document.getElementById('orderGrid').hidden = isShop;
+    var isRentals = section === 'rentals';
+    document.getElementById('orderFilterRow').hidden = isShop || isRentals;
+    document.getElementById('orderGrid').hidden = isShop || isRentals;
     document.getElementById('shopSection').hidden = !isShop;
+    document.getElementById('rentalsSection').hidden = !isRentals;
     if(isShop) renderShop();
+    if(isRentals){
+      if(!rentalCalMonth) rentalCalReset();
+      renderRentalCalendar();
+      renderRentalList();
+    }
   }
   document.getElementById('sectionTabs').addEventListener('click', function(e){
     var btn = e.target.closest('.tab');
@@ -3837,7 +4201,7 @@
     document.querySelectorAll('#sectionTabs .tab').forEach(function(t){ t.setAttribute('aria-selected', t===btn ? 'true':'false'); });
     filters.section = btn.dataset.section;
     showSection(filters.section);
-    if(filters.section !== 'shop') renderOrders();
+    if(filters.section !== 'shop' && filters.section !== 'rentals') renderOrders();
   });
 
   // area chips
@@ -3911,7 +4275,7 @@
     ordersCol().orderBy('createdAt','desc').limit(500).onSnapshot(function(snap){
       orders = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
       orders.forEach(function(o){
-        if(o.kind === 'shop') return; // Μαγαζί ledger codes aren't delivery item codes
+        if(o.kind === 'shop' || o.kind === 'rental') return; // Μαγαζί ledger & rental codes aren't delivery item codes
         if(o.items && o.items.length){ o.items.forEach(function(it){ if(it.code) knownCodes.add(it.code); }); }
         else if(o.code) knownCodes.add(o.code);
       });
