@@ -282,6 +282,19 @@
   }
   .cal-marker.urgent{ background:var(--st-pending-bg); color:var(--st-pending-fg); }
   .cal-marker.overdue{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
+  .cal-cell:hover{ z-index:30; }
+  .cal-tooltip{
+    position:absolute; left:50%; bottom:100%; transform:translateX(-50%); margin-bottom:8px;
+    background:var(--steel); color:var(--steel-ink); padding:7px 11px; border-radius:9px;
+    font-size:.74rem; font-weight:600; line-height:1.5; white-space:nowrap; text-align:left;
+    opacity:0; visibility:hidden; pointer-events:none; transition:opacity .12s ease;
+    box-shadow:var(--shadow-md); z-index:40;
+  }
+  .cal-tooltip::after{
+    content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border:5px solid transparent; border-top-color:var(--steel);
+  }
+  .cal-cell:hover .cal-tooltip{ opacity:1; visibility:visible; }
   .rental-row{ display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border); }
   .rental-row:last-child{ border-bottom:none; }
   .rental-row .oi{
@@ -2867,10 +2880,12 @@
       if(matches && matches.length){
         var worst = Math.min.apply(null, matches.map(function(m){ return m.days; }));
         var cls = worst < 0 ? 'overdue' : (worst <= 3 ? 'urgent' : '');
-        var names = matches.map(function(m){ return m.r.customerName || m.r.customerCode || ''; }).join(', ');
+        var fullNames = matches.map(function(m){ return m.r.customerName || m.r.customerCode || ''; });
+        var names = fullNames.join(', ');
         var firstWord = ((matches[0].r.customerName || matches[0].r.customerCode || '').trim().split(/\s+/)[0] || '');
         var label = firstWord + (matches.length > 1 ? ' +' + (matches.length - 1) : '');
         html += '<span class="cal-marker '+cls+'" title="'+esc(names)+'">' + esc(label) + '</span>';
+        html += '<div class="cal-tooltip">' + fullNames.map(esc).join('<br>') + '</div>';
       }
       cell.innerHTML = html;
       grid.appendChild(cell);
