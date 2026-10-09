@@ -290,6 +290,9 @@
     opacity:0; visibility:hidden; pointer-events:none; transition:opacity .12s ease;
     box-shadow:var(--shadow-md); z-index:40;
   }
+  .cal-tooltip ul{ margin:0; padding-left:16px; list-style:disc; }
+  .cal-tooltip li{ margin:0; padding:0; }
+  .cal-tooltip li::marker{ color:var(--steel-ink); }
   .cal-tooltip::after{
     content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
     border:5px solid transparent; border-top-color:var(--steel);
@@ -2885,7 +2888,7 @@
         var firstWord = ((matches[0].r.customerName || matches[0].r.customerCode || '').trim().split(/\s+/)[0] || '');
         var label = firstWord + (matches.length > 1 ? ' +' + (matches.length - 1) : '');
         html += '<span class="cal-marker '+cls+'" title="'+esc(names)+'">' + esc(label) + '</span>';
-        html += '<div class="cal-tooltip">' + fullNames.map(esc).join('<br>') + '</div>';
+        html += '<div class="cal-tooltip"><ul>' + fullNames.map(function(n){ return '<li>'+esc(n)+'</li>'; }).join('') + '</ul></div>';
       }
       cell.innerHTML = html;
       grid.appendChild(cell);
