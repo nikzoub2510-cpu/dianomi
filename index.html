@@ -255,6 +255,7 @@
   .rental-form-title{ font-size:.95rem; margin:0 0 10px; }
   .checkbox-field{ display:flex; align-items:center; gap:8px; font-size:.85rem; font-weight:600; color:var(--ink); cursor:pointer; }
   .checkbox-field input{ width:17px; height:17px; accent-color:var(--accent-strong); cursor:pointer; flex:none; }
+  .rental-duration-toggle .chip{ font-size:.8rem; padding:6px 14px; }
   .rental-cal-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
   .rental-cal-head h3{ font-size:1.1rem; text-align:center; flex:1; }
   .cal-nav-btn{
@@ -897,6 +898,17 @@
             <label for="r-start">Ημερομηνία έναρξης *</label>
             <input id="r-start" type="date" required>
           </div>
+          <div class="field">
+            <label>Διάρκεια</label>
+            <div class="chip-group rental-duration-toggle" id="rentalDurationToggle">
+              <button type="button" class="chip" data-duration="monthly" aria-pressed="true">Μηνιαίο μίσθωμα</button>
+              <button type="button" class="chip" data-duration="fixed" aria-pressed="false">Οριζόμενη ημερομηνία</button>
+            </div>
+          </div>
+          <div class="field rental-end-field" id="rentalEndField" hidden>
+            <label for="r-end">Ημερομηνία λήξης *</label>
+            <input id="r-end" type="date">
+          </div>
           <div class="field rental-loan-field">
             <label class="checkbox-field"><input type="checkbox" id="r-loan"> Χρησιδανεισμός (χωρίς αντίτιμο)</label>
           </div>
@@ -1470,6 +1482,17 @@
    *  rentals have no rent to renew, so callers should skip them entirely
    *  rather than call this. */
   function rentalRenewalBase(r){ return r.renewalAnchor || r.startDate; }
+  /** The single date to watch for a rental, accounting for its duration
+   *  mode: a fixed-date rental (μίσθωμα ή χρησιδανεισμός με οριζόμενη
+   *  ημερομηνία) watches its own endDate with no monthly cycling; an
+   *  ordinary monthly-mode paid rental keeps cycling every month from
+   *  rentalRenewalBase(); an ordinary monthly-mode χρησιδανεισμός is
+   *  open-ended and has no date to watch at all. */
+  function rentalNextDate(r){
+    if(r.durationMode === 'fixed') return r.endDate || null;
+    if(r.isLoan) return null;
+    return rentalNextRenewal(rentalRenewalBase(r));
+  }
   /** Whole days between today and a date string (negative = already past). */
   function daysUntil(dateStr){
     if(!dateStr) return null;
@@ -2831,9 +2854,9 @@
     var banner = document.getElementById('rentalReminderBanner');
     if(!banner) return;
     if(!role || role.type !== 'admin'){ banner.hidden = true; return; }
-    var due = getRentals().filter(function(r){ return !r.isLoan; }).map(function(r){
-      var next = rentalNextRenewal(rentalRenewalBase(r));
-      return {r: r, next: next, days: daysUntil(next)};
+    var due = getRentals().map(function(r){
+      var next = rentalNextDate(r);
+      return {r: r, next: next, days: next===null ? null : daysUntil(next)};
     }).filter(function(x){ return x.days !== null && x.days <= 3; })
       .sort(function(a,b){ return a.days - b.days; });
     if(due.length === 0){ banner.hidden = true; return; }
@@ -2857,8 +2880,7 @@
 
     var byDay = {};
     getRentals().forEach(function(r){
-      if(r.isLoan) return;
-      var next = rentalNextRenewal(rentalRenewalBase(r));
+      var next = rentalNextDate(r);
       if(!next) return;
       (byDay[next] = byDay[next] || []).push({r:r, days: daysUntil(next)});
     });
@@ -2905,8 +2927,8 @@
     var box = document.getElementById('rentalList');
     if(!box) return;
     var rows = getRentals().map(function(r){
-      var next = r.isLoan ? null : rentalNextRenewal(rentalRenewalBase(r));
-      return {r:r, next: next, days: r.isLoan ? null : daysUntil(next)};
+      var next = rentalNextDate(r);
+      return {r:r, next: next, days: next===null ? null : daysUntil(next)};
     }).sort(function(a,b){ return (a.days==null?9999:a.days) - (b.days==null?9999:b.days); });
     box.innerHTML = '';
     if(rows.length === 0){
@@ -2932,12 +2954,13 @@
         '</div>' +
         '<span class="badge-renewal '+badgeCls+'"></span>' +
         '<div class="ra"></div>' +
-        (r.isLoan ? '' : '<button type="button" class="icon-btn rrenew" title="Ανανέωση μισθώματος"><svg class="icon"><use href="#ico-renew"/></svg></button>') +
+        ((r.isLoan || r.durationMode === 'fixed') ? '' : '<button type="button" class="icon-btn rrenew" title="Ανανέωση μισθώματος"><svg class="icon"><use href="#ico-renew"/></svg></button>') +
         '<button type="button" class="icon-btn redit" title="Επεξεργασία"><svg class="icon"><use href="#ico-edit"/></svg></button>' +
         '<button type="button" class="icon-btn rdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
       row.querySelector('.rname').textContent = (r.customerCode ? r.customerCode + ' — ' : '') + (r.customerName || '');
       row.querySelector('.ritems').textContent = itemsSummary;
-      row.querySelector('.rmeta').textContent = 'Έναρξη ' + fmtDateShort(r.startDate) + (x.next ? (' · Ανανέωση ' + fmtDateShort(x.next)) : '');
+      var rmetaLabel = r.durationMode === 'fixed' ? 'Λήξη' : 'Ανανέωση';
+      row.querySelector('.rmeta').textContent = 'Έναρξη ' + fmtDateShort(r.startDate) + (x.next ? (' · ' + rmetaLabel + ' ' + fmtDateShort(x.next)) : '');
       row.querySelector('.badge-renewal').textContent = badgeText;
       var raEl = row.querySelector('.ra');
       if(r.isLoan){
@@ -4116,6 +4139,26 @@
     });
     recomputeRentalTotal();
   });
+  // Διάρκεια μισθώματος/χρησιδανεισμού: μηνιαίο (ανανεώνεται κάθε μήνα) ή
+  // οριζόμενη ημερομηνία (ένα μόνο, συγκεκριμένο όριο — χωρίς ανανέωση).
+  // Διαθέσιμο ανεξάρτητα από το αν πρόκειται για μίσθωμα ή χρησιδανεισμό,
+  // ώστε να μπαίνει ημερομηνία λήξης και σε χρησιδανεισμό όταν χρειάζεται.
+  var rentalDurationMode = 'monthly';
+  function setRentalDurationMode(mode){
+    rentalDurationMode = mode;
+    document.querySelectorAll('#rentalDurationToggle .chip').forEach(function(c){
+      c.setAttribute('aria-pressed', String(c.dataset.duration === mode));
+    });
+    var fixed = mode === 'fixed';
+    document.getElementById('rentalEndField').hidden = !fixed;
+    document.getElementById('r-end').required = fixed;
+    if(!fixed) document.getElementById('r-end').value = '';
+  }
+  document.getElementById('rentalDurationToggle').addEventListener('click', function(e){
+    var btn = e.target.closest('.chip');
+    if(!btn) return;
+    setRentalDurationMode(btn.dataset.duration);
+  });
 
   // Επεξεργασία καταχωρημένου μισθώματος: γεμίζει την ίδια φόρμα με τα
   // στοιχεία του και τη γυρίζει σε "update mode" μέχρι να υποβληθεί ή να
@@ -4126,6 +4169,8 @@
     document.getElementById('r-name').value = r.customerName || '';
     document.getElementById('r-start').value = r.startDate || '';
     document.getElementById('r-loan').checked = !!r.isLoan;
+    setRentalDurationMode(r.durationMode === 'fixed' ? 'fixed' : 'monthly');
+    document.getElementById('r-end').value = r.endDate || '';
     document.getElementById('rentalItemsList').innerHTML = '';
     (r.items && r.items.length ? r.items : [{}]).forEach(function(it){ addRentalItemRow(it); });
     recomputeRentalTotal();
@@ -4137,6 +4182,7 @@
   function cancelRentalEdit(){
     rentalEditId = null;
     document.getElementById('rentalForm').reset();
+    setRentalDurationMode('monthly');
     document.getElementById('rentalItemsList').innerHTML = '';
     addRentalItemRow();
     recomputeRentalTotal();
@@ -4150,7 +4196,10 @@
     var code = document.getElementById('r-code').value.trim();
     var name = document.getElementById('r-name').value.trim();
     var start = document.getElementById('r-start').value;
+    var fixedDuration = rentalDurationMode === 'fixed';
+    var end = document.getElementById('r-end').value;
     if(!code || !name || !start) return;
+    if(fixedDuration && !end) return;
     var loan = isRentalLoan();
     var items = [];
     document.querySelectorAll('#rentalItemsList .r-item-row').forEach(function(row){
@@ -4167,7 +4216,9 @@
       items: items,
       isLoan: loan,
       vatRate: RENTAL_VAT_RATE,
-      startDate: start
+      startDate: start,
+      durationMode: fixedDuration ? 'fixed' : 'monthly',
+      endDate: fixedDuration ? end : null
     };
     if(rentalEditId){
       updateOrder(rentalEditId, payload);
