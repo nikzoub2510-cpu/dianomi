@@ -315,7 +315,7 @@
   .badge-renewal.overdue{ background:var(--st-cancel-bg); color:var(--st-cancel-fg); }
   .rental-row .ra{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:700; font-size:.9rem; flex:none; }
   .rental-row .ra.loan{ font-family:inherit; font-weight:600; font-size:.68rem; color:var(--accent-strong); white-space:nowrap; }
-  .rental-row .redit,.rental-row .rdel{ flex:none; }
+  .rental-row .rrenew,.rental-row .redit,.rental-row .rdel{ flex:none; }
 
   /* ---------- order list & rows ----------
      #orderGrid is ONE shared CSS grid: every order contributes the same
@@ -774,6 +774,7 @@
     <symbol id="ico-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
     <symbol id="ico-edit" viewBox="0 0 24 24"><path d="M4 20l1-4L15.5 5.5l3 3L8 19l-4 1z"/></symbol>
     <symbol id="ico-trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+    <symbol id="ico-renew" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v5h-5"/></symbol>
     <symbol id="ico-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
     <symbol id="ico-swap" viewBox="0 0 24 24"><path d="M4 8h13l-3-3m3 3l-3 3M20 16H7l3 3m-3-3l3-3"/></symbol>
     <symbol id="ico-box" viewBox="0 0 24 24"><path d="M3 8l9-4 9 4-9 4-9-4zM3 8v9l9 4 9-4V8M12 12v9"/></symbol>
@@ -1463,6 +1464,12 @@
     }
     return candidate;
   }
+  /** The date renewal cycles are computed from: the last explicit renewal
+   *  anchor once the rental has been renewed at least once via the "Ανανέωση"
+   *  action, otherwise its original start date. Χρησιδανεισμός (loan)
+   *  rentals have no rent to renew, so callers should skip them entirely
+   *  rather than call this. */
+  function rentalRenewalBase(r){ return r.renewalAnchor || r.startDate; }
   /** Whole days between today and a date string (negative = already past). */
   function daysUntil(dateStr){
     if(!dateStr) return null;
@@ -2824,20 +2831,19 @@
     var banner = document.getElementById('rentalReminderBanner');
     if(!banner) return;
     if(!role || role.type !== 'admin'){ banner.hidden = true; return; }
-    var due = getRentals().map(function(r){
-      var next = rentalNextRenewal(r.startDate);
+    var due = getRentals().filter(function(r){ return !r.isLoan; }).map(function(r){
+      var next = rentalNextRenewal(rentalRenewalBase(r));
       return {r: r, next: next, days: daysUntil(next)};
     }).filter(function(x){ return x.days !== null && x.days <= 3; })
       .sort(function(a,b){ return a.days - b.days; });
     if(due.length === 0){ banner.hidden = true; return; }
-    var parts = due.slice(0,3).map(function(x){
+    var parts = due.map(function(x){
       var label = x.days < 0 ? ('έληξε πριν ' + Math.abs(x.days) + (Math.abs(x.days) === 1 ? ' ημέρα' : ' ημέρες'))
         : x.days === 0 ? 'λήγει σήμερα'
         : ('λήγει σε ' + x.days + (x.days === 1 ? ' ημέρα' : ' ημέρες'));
       return (x.r.customerName || x.r.customerCode || '—') + ' (' + label + ')';
     });
-    var extra = due.length > 3 ? ' και ' + (due.length - 3) + ' ακόμη' : '';
-    banner.textContent = 'Ανανέωση μισθώματος θερμάστρας: ' + parts.join(' · ') + extra + '.';
+    banner.textContent = 'Ανανέωση μισθώματος θερμάστρας: ' + parts.join(' · ') + '.';
     banner.hidden = false;
   }
   var RENTAL_MONTH_NAMES = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος'];
@@ -2851,7 +2857,8 @@
 
     var byDay = {};
     getRentals().forEach(function(r){
-      var next = rentalNextRenewal(r.startDate);
+      if(r.isLoan) return;
+      var next = rentalNextRenewal(rentalRenewalBase(r));
       if(!next) return;
       (byDay[next] = byDay[next] || []).push({r:r, days: daysUntil(next)});
     });
@@ -2898,8 +2905,8 @@
     var box = document.getElementById('rentalList');
     if(!box) return;
     var rows = getRentals().map(function(r){
-      var next = rentalNextRenewal(r.startDate);
-      return {r:r, next: next, days: daysUntil(next)};
+      var next = r.isLoan ? null : rentalNextRenewal(rentalRenewalBase(r));
+      return {r:r, next: next, days: r.isLoan ? null : daysUntil(next)};
     }).sort(function(a,b){ return (a.days==null?9999:a.days) - (b.days==null?9999:b.days); });
     box.innerHTML = '';
     if(rows.length === 0){
@@ -2925,11 +2932,12 @@
         '</div>' +
         '<span class="badge-renewal '+badgeCls+'"></span>' +
         '<div class="ra"></div>' +
+        (r.isLoan ? '' : '<button type="button" class="icon-btn rrenew" title="Ανανέωση μισθώματος"><svg class="icon"><use href="#ico-renew"/></svg></button>') +
         '<button type="button" class="icon-btn redit" title="Επεξεργασία"><svg class="icon"><use href="#ico-edit"/></svg></button>' +
         '<button type="button" class="icon-btn rdel" title="Διαγραφή"><svg class="icon"><use href="#ico-trash"/></svg></button>';
       row.querySelector('.rname').textContent = (r.customerCode ? r.customerCode + ' — ' : '') + (r.customerName || '');
       row.querySelector('.ritems').textContent = itemsSummary;
-      row.querySelector('.rmeta').textContent = 'Έναρξη ' + fmtDateShort(r.startDate) + ' · Ανανέωση ' + fmtDateShort(x.next);
+      row.querySelector('.rmeta').textContent = 'Έναρξη ' + fmtDateShort(r.startDate) + (x.next ? (' · Ανανέωση ' + fmtDateShort(x.next)) : '');
       row.querySelector('.badge-renewal').textContent = badgeText;
       var raEl = row.querySelector('.ra');
       if(r.isLoan){
@@ -2937,6 +2945,15 @@
         raEl.classList.add('loan');
       } else {
         raEl.textContent = fmtMoney(rentalMonthlyTotal(r.items)) || '0,00 €';
+      }
+      var renewBtn = row.querySelector('.rrenew');
+      if(renewBtn){
+        renewBtn.addEventListener('click', function(){
+          var newAnchor = addMonthsClamped(x.next, 1);
+          showConfirm('Ανανέωση μισθώματος για «'+(r.customerName||'')+'»· η επόμενη ανανέωση θα οριστεί στις '+fmtDateShort(newAnchor)+'.', function(){
+            updateOrder(r.id, {renewalAnchor: newAnchor});
+          }, {yesLabel:'Ανανέωση', danger:false});
+        });
       }
       row.querySelector('.redit').addEventListener('click', function(){ startRentalEdit(r); });
       row.querySelector('.rdel').addEventListener('click', function(){
