@@ -450,7 +450,39 @@
     .order-row .row-sub{
       display:none;
     }
-    .order-row.expanded .cell-items{ display:flex; grid-row:4; grid-column:1/-1; padding-top:6px; }
+    /* Items & quantities, tapped open on a phone: the desktop layout packs
+       fixed-width product/qty pairs side by side like a spreadsheet column,
+       which doesn't fit a phone's width — names get clipped and quantities
+       sit squeezed right against them. Here it becomes a clear, structured,
+       bulleted list instead: one product per row, with its full (never
+       truncated, wrapping) name, and the quantity set apart as its own
+       bold badge so the two are never confused at a glance. */
+    .order-row.expanded .cell-items{
+      display:flex; grid-row:4; grid-column:1/-1; padding-top:6px;
+      flex-direction:column; align-items:stretch; row-gap:6px;
+    }
+    .order-row.expanded .cell-items:not(:empty)::before{
+      content:'Προϊόντα'; order:-1; font-size:.66rem; font-weight:700; text-transform:uppercase;
+      letter-spacing:.03em; color:var(--ink-faint); margin-bottom:2px;
+    }
+    .order-row.expanded .cell-items .item-pair{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      white-space:normal; margin-left:0; padding:6px 10px 6px 20px; position:relative;
+      background:var(--surface-2); border-radius:8px;
+    }
+    .order-row.expanded .cell-items .item-pair::before{
+      content:'•'; position:absolute; left:8px; top:50%; transform:translateY(-50%);
+      font-size:1.1em; line-height:1; color:var(--ink-muted);
+    }
+    .order-row.expanded .cell-items .ic{
+      flex:0 1 auto; max-width:72%; overflow:visible; white-space:normal; overflow-wrap:break-word;
+      font-size:.86rem; font-weight:700;
+    }
+    .order-row.expanded .cell-items .iq{
+      flex:none; text-align:center; font-size:.86rem; font-weight:800;
+      background:var(--surface); color:var(--ink); border-radius:7px; padding:2px 9px;
+    }
+    .order-row.expanded .cell-items .iq:empty{ display:none; }
     .order-row.expanded .cell-payment{ display:flex; grid-row:5; grid-column:1/-1; }
     .order-row.expanded .cell-phone{ display:flex; grid-row:6; grid-column:1/-1; }
     .order-row.expanded .cell-status{ display:flex; grid-row:7; grid-column:1/-1; }
