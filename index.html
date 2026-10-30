@@ -1373,26 +1373,37 @@
   /* ---------------- state ---------------- */
   var db = null;
   var offline = false;
-  var orders = [];      // {id, ...fields}
+  var orders = [];      // {id, ...fields} -- merged view: recentOrders + rentalShopOrders (see mergeOrderSources() below)
+  var recentOrders = [];     // raw snapshot from the capped (limit 500) delivery-orders listener
+  var rentalShopOrders = []; // raw snapshot from the uncapped rentals+Μαγαζί listener (see attachRentalShopListener)
   var deliverers = [];  // {id, name, type, active}
   var customers = [];   // {id, name, address, phone, notes}
   var customersLoaded = false; // true once the first Firestore snapshot for customers has arrived
   var products = [];    // {id, name, price, active} — admin-defined "hot" quick-pick products for order items
-  // Μαγαζί ledger entries are stored as ordinary documents in the SAME
-  // "orders" collection (marked kind:'shop', shopType:'sale'|'expense')
-  // instead of a separate Firestore collection — a dedicated collection
-  // needs its own security rule added in the Firebase console before it's
-  // reachable at all, which isn't something this app can do for itself.
-  // Reusing "orders" means the ledger works immediately under the rules
-  // that already exist, at the cost of sharing that collection's 500-doc
-  // listener limit — acceptable since entries get exported and deleted
-  // regularly via the Excel backup, same as regular orders. getShopEntries()
-  // below is the single place that pulls them back out of `orders`; every
-  // other order-list function (getFilteredOrders, renderStats, the item-code
-  // datalist, the per-day backup) explicitly excludes kind==='shop'.
-  // Ενοικιάσεις (heater rentals, kind:'rental') reuse the exact same trick —
-  // see getRentals() near getShopEntries() below — and are excluded at every
-  // one of those same call sites alongside kind==='shop'.
+  // Μαγαζί ledger entries AND Ενοικιάσεις (heater rentals) are stored as
+  // ordinary documents in the SAME "orders" collection (marked kind:'shop'
+  // or kind:'rental') instead of their own Firestore collections — a
+  // dedicated collection needs its own security rule added in the Firebase
+  // console before it's reachable at all, which isn't something this app
+  // can do for itself. Reusing "orders" means both work immediately under
+  // the rules that already exist. getShopEntries()/getRentals() below are
+  // the single places that pull them back out of `orders`; every other
+  // order-list function (getFilteredOrders, renderStats, the item-code
+  // datalist, the per-day backup) explicitly excludes kind==='shop' and
+  // kind==='rental'.
+  //
+  // IMPORTANT: the delivery-orders listener below caps itself to the 500
+  // most recently created documents, for performance — fine for shop
+  // entries (regularly exported & deleted via the Excel backup, so they
+  // never pile up) but NOT for rentals, which are meant to stay around
+  // indefinitely. A rental created weeks ago used to silently fall out of
+  // that 500-doc window as new delivery orders piled up on top of it —
+  // looking exactly like the rental had been deleted, when really it was
+  // still sitting untouched in the database the whole time. Fixed by
+  // giving kind:'rental' (and, for the same reason, kind:'shop') their
+  // own uncapped listener — see attachRentalShopListener() near
+  // attachOrdersListener() below — merged into `orders` alongside the
+  // capped delivery-order window.
   var localSubs = {};   // offline-mode stand-in for the pushSubscriptions collection
   var role = null;      // {type:'admin'} | {type:'driver', name:'...'}
   var filters = {section:'active', area:'ALL', search:'', mineOnly:false, deliverer:'ALL'};
@@ -4463,14 +4474,39 @@
   }
   window.addEventListener('unhandledrejection', function(e){ showDbError(e.reason); });
 
+  /** Recomputes the merged `orders` array from both listeners' latest
+   *  snapshots — recentOrders (capped) and rentalShopOrders (uncapped) —
+   *  by id, so a document present in either source stays visible no
+   *  matter which listener last fired. A document absent from BOTH
+   *  (deleted, or — for a plain delivery order — aged out of the capped
+   *  window) drops out of `orders` too. */
+  function mergeOrderSources(){
+    var byId = {};
+    recentOrders.forEach(function(o){ byId[o.id] = o; });
+    rentalShopOrders.forEach(function(o){ byId[o.id] = o; });
+    orders = Object.keys(byId).map(function(id){ return byId[id]; });
+  }
   function attachOrdersListener(){
     ordersCol().orderBy('createdAt','desc').limit(500).onSnapshot(function(snap){
-      orders = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      recentOrders = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      mergeOrderSources();
       orders.forEach(function(o){
         if(o.kind === 'shop' || o.kind === 'rental') return; // Μαγαζί ledger & rental codes aren't delivery item codes
         if(o.items && o.items.length){ o.items.forEach(function(it){ if(it.code) knownCodes.add(it.code); }); }
         else if(o.code) knownCodes.add(o.code);
       });
+      renderAll();
+    }, showDbError);
+  }
+  /** Ενοικιάσεις and Μαγαζί ledger entries, uncapped — see the comment by
+   *  `var orders` above for why they can't rely on the capped delivery-
+   *  orders listener above. Both kinds are small, slow-growing sets (a
+   *  handful to a few hundred documents), so no cap is needed here, same
+   *  as attachCustomersListener() below. */
+  function attachRentalShopListener(){
+    ordersCol().where('kind','in',['rental','shop']).onSnapshot(function(snap){
+      rentalShopOrders = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+      mergeOrderSources();
       renderAll();
     }, showDbError);
   }
@@ -4537,6 +4573,7 @@
     if(fsDb){
       db = fsDb;
       attachOrdersListener();
+      attachRentalShopListener();
       attachDeliverersListener();
       attachCustomersListener();
       attachProductsListener();
@@ -4553,6 +4590,7 @@
         }
         db = namespace;
         attachOrdersListener();
+        attachRentalShopListener();
         attachDeliverersListener();
         attachCustomersListener();
         attachProductsListener();
