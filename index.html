@@ -23,6 +23,10 @@
     --accent-ink:#1C1A12;
     --accent-soft:#FFF3BF;
     --accent-strong:#8A6600;
+    /* sampled straight from the ZGAS dragon logo (brand-mark JPEG) — kept
+       fixed across light/dark theme, like any brand mark, rather than
+       following --accent's own per-theme tuning. */
+    --logo-yellow:#FFE500;
     --steel:#202124;
     --steel-ink:#FFFFFF;
     --shadow-sm:0 1px 2px rgba(20,24,27,.07);
@@ -559,7 +563,7 @@
   .fab{
     position:fixed; right:20px; bottom:20px; z-index:30;
     display:flex; align-items:center; gap:8px; padding:14px 20px; border-radius:999px;
-    background:var(--accent); color:var(--accent-ink); border:none; font-weight:700; font-size:.9rem;
+    background:var(--logo-yellow); color:var(--accent-ink); border:none; font-weight:700; font-size:.9rem;
     box-shadow:var(--shadow-md); cursor:pointer;
   }
   .fab svg{ width:18px; height:18px; }
@@ -1034,8 +1038,8 @@
       <input type="hidden" id="f-id">
       <div class="form-grid">
         <div class="field span2">
-          <label for="f-phone">Τηλέφωνο, Πελάτης ή Διεύθυνση</label>
-          <input id="f-phone" type="text" autocomplete="off" placeholder="Γράψε τηλέφωνο, όνομα ή διεύθυνση πελάτη — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
+          <label for="f-phone">Τηλέφωνο ή Πελάτης</label>
+          <input id="f-phone" type="text" autocomplete="off" placeholder="Γράψε τηλέφωνο ή όνομα πελάτη — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
           <div class="phone-suggest" id="phoneSuggest" hidden></div>
           <p class="field-hint" id="custHint" hidden></p>
         </div>
@@ -1059,6 +1063,7 @@
         <div class="field span2">
           <label for="f-address">Διεύθυνση</label>
           <input id="f-address" autocomplete="off">
+          <div class="phone-suggest" id="addressSuggest" hidden></div>
         </div>
         <div class="field span2">
           <label>Είδη παραγγελίας</label>
@@ -1382,7 +1387,7 @@
     '0015Π':  {bg:'#7C3AED', fg:'#FFFFFF'},
     '0025Π':  {bg:'#7C3AED', fg:'#FFFFFF'}
   };
-  var MANUAL_CODE_COLOR = {bg:'#F0C300', fg:'#1C1A12'};
+  var MANUAL_CODE_COLOR = {bg:'#FFE500', fg:'#1C1A12'};
   function getCodeColor(code){
     if(!code) return null;
     return CODE_COLOR_META[String(code).toUpperCase()] || MANUAL_CODE_COLOR;
@@ -3496,6 +3501,7 @@
     document.getElementById('custHint').hidden = true;
     document.getElementById('phoneSuggest').hidden = true;
     document.getElementById('nameSuggest').hidden = true;
+    document.getElementById('addressSuggest').hidden = true;
     document.getElementById('f-id').value = existing ? existing.id : '';
     document.getElementById('orderModalTitle').textContent = existing ? 'Επεξεργασία παραγγελίας' : 'Νέα παραγγελία';
     renderDelivererFormSelect();
@@ -3835,10 +3841,11 @@
     box.hidden = matches.length === 0;
   }
 
-  // This one field doubles as phone/name/address search: whatever digits
-  // are in it are matched against phone numbers, and the raw text is also
-  // matched against customer names AND addresses, so staff can find a
-  // customer by phone, name, or part of their address.
+  // This one field doubles as phone-or-name search: whatever digits are in
+  // it are matched against phone numbers, and the raw text is also matched
+  // against customer names, so staff can find a customer either way.
+  // (Address search lives on the Address field itself — see
+  // renderAddressSuggestions below.)
   document.getElementById('f-phone').addEventListener('input', function(){
     var hint = document.getElementById('custHint');
     var suggestBox = document.getElementById('phoneSuggest');
@@ -3871,7 +3878,7 @@
     }
     if(qText.length >= 2){
       customers.forEach(function(c){
-        if(!seen[c.id] && (String(c.name||'').toLowerCase().indexOf(qText) !== -1 || String(c.address||'').toLowerCase().indexOf(qText) !== -1)){ seen[c.id] = true; candidates.push(c); }
+        if(!seen[c.id] && String(c.name||'').toLowerCase().indexOf(qText) !== -1){ seen[c.id] = true; candidates.push(c); }
       });
     }
 
@@ -3965,7 +3972,7 @@
     if(phoneEl.value){ box.hidden = true; nameSuggestIndex = -1; return; } // phone already drives the match
     var qText = this.value.trim().toLowerCase();
     if(qText.length < 2){ box.hidden = true; nameSuggestIndex = -1; return; }
-    var matches = customers.filter(function(c){ return String(c.name||'').toLowerCase().indexOf(qText) !== -1 || String(c.address||'').toLowerCase().indexOf(qText) !== -1; });
+    var matches = customers.filter(function(c){ return String(c.name||'').toLowerCase().indexOf(qText) !== -1; });
     renderNameSuggestions(matches);
   });
 
@@ -3993,6 +4000,84 @@
       e.preventDefault();
       e.stopPropagation();
       items[nameSuggestIndex].click();
+    }
+  });
+
+  // third convenience: searching by address (phone and name not at hand,
+  // but the delivery address is known) offers matching customers to pick
+  // from, the same way the name field does — nothing is filled in until
+  // staff actually pick a suggestion. Suppressed once phone is filled,
+  // same as the name field, since phone stays the primary lookup.
+  var addressSuggestIndex = -1;
+
+  function updateAddressSuggestHighlight(){
+    var box = document.getElementById('addressSuggest');
+    Array.from(box.children).forEach(function(btn, i){
+      btn.classList.toggle('ps-active', i === addressSuggestIndex);
+    });
+  }
+
+  function renderAddressSuggestions(matches){
+    var box = document.getElementById('addressSuggest');
+    box.innerHTML = '';
+    addressSuggestIndex = -1;
+    matches.slice(0, 6).forEach(function(c){
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.tabIndex = -1;
+      var metaBits = [];
+      if(c.address) metaBits.push(c.address);
+      if(c.floor) metaBits.push(c.floor);
+      btn.innerHTML = '<div class="ps-name"></div><div class="ps-meta"><span class="ps-phone"></span>' + (metaBits.length ? ' · <span class="ps-addr"></span>' : '') + '</div>';
+      btn.querySelector('.ps-name').textContent = c.name;
+      btn.querySelector('.ps-phone').textContent = c.phone || '';
+      var addrSpan = btn.querySelector('.ps-addr'); if(addrSpan) addrSpan.textContent = metaBits.join(' · ');
+      btn.addEventListener('click', function(){
+        var phoneEl = document.getElementById('f-phone');
+        if(c.phone) phoneEl.value = c.phone;
+        applyCustomerMatch(c);
+        box.hidden = true;
+        addressSuggestIndex = -1;
+      });
+      box.appendChild(btn);
+    });
+    box.hidden = matches.length === 0;
+  }
+
+  document.getElementById('f-address').addEventListener('input', function(){
+    var phoneEl = document.getElementById('f-phone');
+    var box = document.getElementById('addressSuggest');
+    if(phoneEl.value){ box.hidden = true; addressSuggestIndex = -1; return; } // phone already drives the match
+    var qText = this.value.trim().toLowerCase();
+    if(qText.length < 2){ box.hidden = true; addressSuggestIndex = -1; return; }
+    var matches = customers.filter(function(c){ return String(c.address||'').toLowerCase().indexOf(qText) !== -1; });
+    renderAddressSuggestions(matches);
+  });
+
+  // same arrow/Enter/Escape handling as the other suggestion lists.
+  document.getElementById('f-address').addEventListener('keydown', function(e){
+    var box = document.getElementById('addressSuggest');
+    var items = box.hidden ? [] : Array.prototype.slice.call(box.children);
+    if(!items.length) return;
+    if(e.key === 'Escape'){
+      e.preventDefault();
+      e.stopPropagation();
+      box.hidden = true;
+      addressSuggestIndex = -1;
+      return;
+    }
+    if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+      e.preventDefault();
+      if(e.key === 'ArrowDown'){ addressSuggestIndex = (addressSuggestIndex + 1) % items.length; }
+      else { addressSuggestIndex = (addressSuggestIndex - 1 + items.length) % items.length; }
+      updateAddressSuggestHighlight();
+      items[addressSuggestIndex].scrollIntoView({block: 'nearest'});
+      return;
+    }
+    if(e.key === 'Enter' && addressSuggestIndex >= 0 && addressSuggestIndex < items.length){
+      e.preventDefault();
+      e.stopPropagation();
+      items[addressSuggestIndex].click();
     }
   });
 
