@@ -353,16 +353,20 @@
     white-space:nowrap;
   }
   .cell-area svg{ width:.85em; height:.85em; }
-  /* items & quantities: fixed-width code/qty sub-columns so quantities line
-     up vertically across every row, and bold/high-contrast so they're easy
-     to read at a glance */
+  /* items & quantities: fixed-width code/qty sub-columns, ONE product per
+     line — never side by side — so with several products on one order the
+     codes form one perfectly aligned column and the quantities form
+     another, straight down the list; bold/high-contrast so they're easy to
+     read at a glance. (An earlier version let item-pairs wrap onto the
+     same line with a margin between them, which knocked every line but
+     the first out of alignment by that margin — fixed by always stacking
+     them instead.) */
   .cell-items{
-    display:flex; flex-wrap:wrap; align-items:baseline; align-content:center; justify-content:flex-start;
+    display:flex; flex-direction:column; align-items:flex-start;
     font-family:var(--font-mono); font-size:.82rem;
     font-weight:700; color:var(--ink); font-variant-numeric:tabular-nums; row-gap:3px;
   }
   .cell-items .item-pair{ display:flex; align-items:baseline; white-space:nowrap; }
-  .cell-items .item-pair + .item-pair{ margin-left:8px; }
   .cell-items .ic{ flex:0 0 140px; overflow:hidden; text-overflow:ellipsis; text-align:left; }
   .cell-items .ic.ic-badge{ display:inline-block; padding:1px 5px; border-radius:5px; box-sizing:border-box; }
   .cell-items .iq{ flex:0 0 34px; text-align:right; }
@@ -1030,8 +1034,8 @@
       <input type="hidden" id="f-id">
       <div class="form-grid">
         <div class="field span2">
-          <label for="f-phone">Τηλέφωνο ή Πελάτης</label>
-          <input id="f-phone" type="text" autocomplete="off" placeholder="Γράψε τηλέφωνο ή όνομα πελάτη — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
+          <label for="f-phone">Τηλέφωνο, Πελάτης ή Διεύθυνση</label>
+          <input id="f-phone" type="text" autocomplete="off" placeholder="Γράψε τηλέφωνο, όνομα ή διεύθυνση πελάτη — αν υπάρχει, συμπληρώνονται τα υπόλοιπα">
           <div class="phone-suggest" id="phoneSuggest" hidden></div>
           <p class="field-hint" id="custHint" hidden></p>
         </div>
@@ -1359,15 +1363,29 @@
     'Πίστωση':    {cls:'pill-pay-credit'},
     'Προπληρωμή': {cls:'pill-pay-prepaid'}
   };
-  // color-coding for cylinder codes, shown as a badge in the orders list
+  // Color-coding for item codes, shown as a badge in the orders list (the
+  // "preview" of each order's products). Every standard cylinder code gets
+  // a fixed color so the right type/size is recognizable at a glance;
+  // anything typed in by hand that ISN'T one of these standard codes — a
+  // free-text item — falls through to MANUAL_CODE_COLOR instead, as a
+  // visual flag that it's worth a second look.
   var CODE_COLOR_META = {
-    '0010':   {bg:'#FFFFFF', fg:'#2E86DE', outline:true},
+    '0003':   {bg:'#BFE3F7', fg:'#1A2229'},
+    '0006':   {bg:'#BFE3F7', fg:'#1A2229'},
+    '0010':   {bg:'#BFE3F7', fg:'#1A2229'},
+    '0010Χ':  {bg:'#BFE3F7', fg:'#1A2229'},
+    '0013':   {bg:'#BFE3F7', fg:'#1A2229'},
+    '0015':   {bg:'#BFE3F7', fg:'#1A2229'},
+    '0025':   {bg:'#BFE3F7', fg:'#1A2229'},
     '0010Π':  {bg:'#7C3AED', fg:'#FFFFFF'},
+    '0013Π':  {bg:'#7C3AED', fg:'#FFFFFF'},
+    '0015Π':  {bg:'#7C3AED', fg:'#FFFFFF'},
     '0025Π':  {bg:'#7C3AED', fg:'#FFFFFF'}
   };
+  var MANUAL_CODE_COLOR = {bg:'#F0C300', fg:'#1C1A12'};
   function getCodeColor(code){
     if(!code) return null;
-    return CODE_COLOR_META[String(code).toUpperCase()] || null;
+    return CODE_COLOR_META[String(code).toUpperCase()] || MANUAL_CODE_COLOR;
   }
 
   /* ---------------- state ---------------- */
@@ -3817,9 +3835,10 @@
     box.hidden = matches.length === 0;
   }
 
-  // This one field doubles as phone-or-name search: whatever digits are in
-  // it are matched against phone numbers, and the raw text is also matched
-  // against customer names, so staff can find a customer either way.
+  // This one field doubles as phone/name/address search: whatever digits
+  // are in it are matched against phone numbers, and the raw text is also
+  // matched against customer names AND addresses, so staff can find a
+  // customer by phone, name, or part of their address.
   document.getElementById('f-phone').addEventListener('input', function(){
     var hint = document.getElementById('custHint');
     var suggestBox = document.getElementById('phoneSuggest');
@@ -3852,7 +3871,7 @@
     }
     if(qText.length >= 2){
       customers.forEach(function(c){
-        if(!seen[c.id] && String(c.name||'').toLowerCase().indexOf(qText) !== -1){ seen[c.id] = true; candidates.push(c); }
+        if(!seen[c.id] && (String(c.name||'').toLowerCase().indexOf(qText) !== -1 || String(c.address||'').toLowerCase().indexOf(qText) !== -1)){ seen[c.id] = true; candidates.push(c); }
       });
     }
 
@@ -3946,7 +3965,7 @@
     if(phoneEl.value){ box.hidden = true; nameSuggestIndex = -1; return; } // phone already drives the match
     var qText = this.value.trim().toLowerCase();
     if(qText.length < 2){ box.hidden = true; nameSuggestIndex = -1; return; }
-    var matches = customers.filter(function(c){ return String(c.name||'').toLowerCase().indexOf(qText) !== -1; });
+    var matches = customers.filter(function(c){ return String(c.name||'').toLowerCase().indexOf(qText) !== -1 || String(c.address||'').toLowerCase().indexOf(qText) !== -1; });
     renderNameSuggestions(matches);
   });
 
